@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "image-gallery",
-  "main": "src/index.ts",
+  "main": "src/app.ts",
   "compatibility_date": "2026-03-10",
   /**
  * For more details on how to configure Wrangler, refer to:
@@ -33,7 +33,7 @@
 	 */
   "r2_buckets": [
     {
-      "binding": "ANALOGS_BUCKET", // <~ valid JavaScript variable name
+      "binding": "ANALOGS_BUCKET",
       "bucket_name": "analogs",
       "remote": true
     }
@@ -44,19 +44,22 @@
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
-  "vars": {}
+  "vars": {
+    "altHeaderName": "x-image-alt-desc"
+  },
   /**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
 	 */
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
-  // "ai": {
-  //   "binding": "AI"
-  // }
+  "d1_databases": [
+    {
+      "binding": "ANALOGS_DB",
+      "database_name": "analogs",
+      "database_id": "90e53f2e-cc0c-4dcb-b2fc-7428c7373d19",
+      "remote": true
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  }
 }
