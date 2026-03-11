@@ -15,8 +15,7 @@ export class ImageService {
             return undefined;
         }
 
-        const headerName = c.env.ALT_HEADER_NAME;
-        const imageMetadata = c.env.ANALOGS_METADATA_DB.get();
+        //const imageMetadata = c.env.ANALOGS_METADATA_DB.get();
         //TODO: Add d1 metadata
         const description = '';
         const contentType = object.httpMetadata?.contentType;
