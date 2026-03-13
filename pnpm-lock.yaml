@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      crypto:
+        specifier: ^1.0.1
+        version: 1.0.1
       hono:
         specifier: ^4.12.7
         version: 4.12.7
@@ -394,6 +397,10 @@ packages:
     resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
     engines: {node: '>=18'}
 
+  crypto@1.0.1:
+    resolution: {integrity: sha512-VxBKmeNcqQdiUQUW2Tzq0t377b54N2bMtXO/qiLa+6eRRmmC4qT3D4OnTGoT/U6O9aklQ/jTwbOtRMTTY8G0Ig==}
+    deprecated: This package is no longer supported. It's now a built-in Node module. If you've depended on crypto, you should switch to the one that's built-in.
+
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
@@ -722,6 +729,8 @@ snapshots:
   blake3-wasm@2.1.5: {}
 
   cookie@1.1.1: {}
+
+  crypto@1.0.1: {}
 
   detect-libc@2.1.2: {}
 

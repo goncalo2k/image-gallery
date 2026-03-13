@@ -5,19 +5,19 @@ import { ImageService } from '../services/image.service';
 export class ImageController {
     constructor(private imageService: ImageService) { }
 
-    async getImages(c: Context) {
+    async getImages(c: Context): Promise<any> {
         const images = await this.imageService.getImages();
         return c.json(images);
     }
 
     async getImage(c: Context): Promise<any> {
-        const name = String(c.req.param('name'))
-        const image = await this.imageService.getImageByName(c, name);
+        const name = String(c.req.param('id'));
+        const image = await this.imageService.getImageByName(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, name);
         const headerName = c.env.ALT_HEADER_NAME;
-        if (image) {
-            return new Response(image.blob, {
+        if (image && image.description && image.contentType) {
+            return new Response(image.file, {
                 headers: {
-                    'Content-Type': image.contentType || 'application/octet-stream',
+                    'Content-Type': image.contentType,
                     [headerName]: image.description
                 },
             })
@@ -26,22 +26,10 @@ export class ImageController {
         c.notFound();
     }
 
-    async uploadImage(c: Context) {
-        /* this.imageService.uploadImage() 
-        /* 
-   const res = await fetch("https://cataas.com/cat");
-    const blob = await res.arrayBuffer();
-    const input = {
-      image: [...new Uint8Array(blob)],
-      prompt: "Generate a caption for this image",
-      max_tokens: 512,
-    };
-    const response = await env.AI.run(
-      "@cf/llava-hf/llava-1.5-7b-hf",
-      input
-      );
-    return new Response(JSON.stringify(response)); */
-        return c.json({}, 201)
+    async uploadImage(c: Context): Promise<any> {
+        const body = await c.req.parseBody<ImageUploadRequest>();
+        const isUploaded = await this.imageService.uploadImage(c, body);
+        return c.json({}, isUploaded ? 201 : 500)
     }
 
 }

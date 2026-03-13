@@ -53,9 +53,9 @@
 	 */
   "d1_databases": [
     {
-      "binding": "ANALOGS_DB",
-      "database_name": "analogs",
-      "database_id": "90e53f2e-cc0c-4dcb-b2fc-7428c7373d19",
+      "binding": "ANALOGS_METADATA_DB",
+      "database_name": "analogs-db",
+      "database_id": "40e0fd26-7fa9-4e94-8c75-ab1f0cc6669d",
       "remote": true
     }
   ],

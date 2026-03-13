@@ -11,7 +11,7 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>();
 
 
-app.route('/image', imageRoutes);
+app.route('/images', imageRoutes);
 
 app.get('/', (c) => {
   //TODO: Implement health check

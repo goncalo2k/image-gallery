@@ -1,8 +1,9 @@
 type Image = {
+    id: string;
     name: string;
-    lastUpdated: Date;
-    blobUrl: string;
+    createdAt: string;
+    updatedAt: string;
     description: string;
-    contentType: any;
-    blob: Blob;
+    contentType: string;
+    file: File;
 }
