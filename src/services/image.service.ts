@@ -1,6 +1,5 @@
 import { Context } from "hono";
-import { ImageMapper } from "../services/image-mapper";
-import resizeImageForAI from "../utils/utils";
+import { ImageMapper } from "../utils/image-mapper";
 
 export class ImageService {
     constructor(private mapperService: ImageMapper) { }
