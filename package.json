@@ -9,10 +9,10 @@
     "deploy-db": "npx wrangler d1 execute analogs-db --remote --file=./schema.sql"
   },
   "dependencies": {
-    "crypto": "^1.0.1",
     "hono": "^4.12.7"
   },
   "devDependencies": {
-    "wrangler": "^4.4.0"
+    "@types/node": "^25.5.0",
+    "wrangler": "^4.73.0"
   }
 }

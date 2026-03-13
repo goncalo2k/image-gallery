@@ -11,7 +11,7 @@ export class ImageController {
     }
 
     async getImage(c: Context): Promise<any> {
-        const name = String(c.req.param('id'));
+        const name = String(c.req.param('name'));
         const image = await this.imageService.getImageByName(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, name);
         const headerName = c.env.ALT_HEADER_NAME;
         if (image && image.description && image.contentType) {

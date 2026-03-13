@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { ImageController } from '../controllers/image.controller'
 import { ImageService } from '../services/image.service'
-import { ImageMapper } from '../services/image-mapper';
+import { ImageMapper } from '../utils/image-mapper';
 
 const imageRoutes = new Hono()
 const imageController = new ImageController(new ImageService(new ImageMapper()));

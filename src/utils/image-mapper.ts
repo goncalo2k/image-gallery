@@ -1,8 +1,7 @@
 export class ImageMapper {
-    mapImageMetadataToImage(imageRequest: ImageUploadRequest, imageId: string, imageDescription: string): Image {
+    mapImageMetadataToImage(imageRequest: ImageUploadRequest, imageName: string, imageDescription: string): Image {
         return {
-            id: imageId,
-            name: imageRequest.name ?? imageRequest.file.name,
+            name: imageName,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             description: imageDescription,
