@@ -1,11 +1,17 @@
-import { Context } from "hono";
-import { ImageMapper } from "../utils/image-mapper";
+import type { Context } from "hono";
+import type { ImageMapper } from "../utils/image-mapper";
 
 export class ImageService {
     constructor(private mapperService: ImageMapper) { }
 
-    async getImages(): Promise<Image[]> {
-        return [];
+    async getImagesMetadata(c: Context): Promise<Image[]> {
+        //TODO: Add auth and pagination to this endpoint
+        const response = await c.env.ANALOGS_METADATA_DB.prepare('Select * from images').run() as D1Result;
+        if (!response.results) {
+            throw Error('Failed to fetch all images from D1');
+        }
+
+        return response.results as Image[];
     }
 
     async getImageByName(ANALOGS_BUCKET: R2Bucket, ANALOGS_METADATA_DB: D1Database, name: string): Promise<Partial<Image> | undefined> {
@@ -24,12 +30,12 @@ export class ImageService {
 
             return { blob: object.body, description, name } as Partial<Image>;
         } catch (error) {
-            console.error('Fetch from R2 failed:', error);
-            throw Error('Upload to R2 failed');
+            /* console.error('Fetch from R2 failed:', error); */
+            throw error;
         }
     }
 
-    async uploadImage(c: Context, body: ImageUploadRequest): Promise<boolean> {
+    async uploadImage(c: Context, body: ImageUploadFileRequest): Promise<boolean> {
         const imageName = body.name ?? body.file.name;
         let isMetadataUploaded = false;
         let isBlobUploaded = false;
@@ -43,6 +49,7 @@ export class ImageService {
             const fileBuffer = await body.file.arrayBuffer();
             isBlobUploaded = await this.uploadImageBlob(c.env.ANALOGS_BUCKET, imageName, body.file, fileBuffer);
             let finalDescription = body.description;
+            //TODO: add metadata cache; add file size limit
             if (!finalDescription) {
                 finalDescription = await this.generateImageAltText(c.env.AI, fileBuffer);
             }
@@ -51,18 +58,55 @@ export class ImageService {
             isMetadataUploaded = await this.uploadImageMetadata(c.env.ANALOGS_METADATA_DB, image);
             return isMetadataUploaded && isBlobUploaded && !!finalDescription;
         } catch (error) {
-            if (isBlobUploaded) await this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName);
-            if (isMetadataUploaded) await this.deleteImageMetadata(c.env.ANALOGS_METADATA_DB, imageName);
-            console.error('Failed to upload image:', error);
-            throw Error('Failed to upload image');
+            if (isBlobUploaded) { await this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName); }
+            if (isMetadataUploaded) { await this.deleteImageMetadata(c.env.ANALOGS_METADATA_DB, imageName); }
+/*             console.error('Failed to upload image:', error);
+ */            throw error;
+        }
+    }
+
+    async uploadExternalImage(c: Context, body: ImageUploadUrlRequest): Promise<boolean> {
+        const file = await this.fetchExternalImage(c, body);
+        return await this.uploadImage(c, { file, name: body.name, description: body.description } as ImageUploadFileRequest)
+    }
+
+    private async fetchExternalImage(c: Context, request: ImageUploadUrlRequest): Promise<File> {
+        let url;
+        try {
+            url = new URL(request.fileUrl);
+        } catch {
+            throw Error("Couldn't parse URL from body");
+        }
+
+        try {
+            const response = await fetch(url, {
+                redirect: 'follow'
+            });
+
+
+            if (!response.ok) {
+                throw Error("Couldn't fetch file from remote origin");
+            }
+            const contentType = response.headers.get('content-type');
+
+            if (!contentType?.includes('image')) {
+                throw Error("Remote file's content type is invalid");
+            }
+
+            const fileName = request.name || crypto.randomUUID();
+            const blob = await response.blob();
+
+            return new File([blob], fileName, { type: contentType });
+        } catch (error) {
+            throw error;
         }
     }
 
     private async uploadImageMetadata(ANALOGS_METADATA_DB: D1Database, image: Image): Promise<boolean> {
         try {
-            const result = await ANALOGS_METADATA_DB.prepare("INSERT INTO images (name, description, created_at, updated_at) VALUES (?, ?, ?, ?)")
-                .bind(image.name, image.description, image.createdAt, image.updatedAt)
-                .run() as D1Result;
+            const result = await ANALOGS_METADATA_DB.prepare("INSERT INTO images (name, description, content_type) VALUES (?, ?, ?)")
+                .bind(image.name, image.description, image.contentType)
+                .run();
             if (!result.success || result.meta.rows_written === 0) {
                 throw Error('Insert query to D1 failed');
             }
@@ -81,6 +125,7 @@ export class ImageService {
         }
     }
 
+    //TODO: Add cache for the descriptions and chain the calls to avoid using memory. Also should use executionCtx.waitUntil to leverage non-blocking calls  
     private async uploadImageBlob(ANALOGS_BUCKET: R2Bucket, name: string, file: File, fileBuffer: ArrayBuffer): Promise<boolean> {
         try {
             if (!file.type.includes('image')) {
@@ -117,7 +162,7 @@ export class ImageService {
             const input = {
                 image: [...new Uint8Array(fileBuffer)],
                 prompt: "Generate a caption for this image",
-                max_tokens: 512,
+                max_tokens: 256,
             };
 
             const response = await AI_WORKER.run(
@@ -127,9 +172,9 @@ export class ImageService {
 
             if (!response) {
                 throw Error("Image generation didn't return a valid value");
-    }
+            }
 
-            return JSON.stringify(response);
+            return response.description;
         } catch (error) {
             throw error;
         }

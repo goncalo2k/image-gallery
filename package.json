@@ -6,13 +6,21 @@
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "setup-local-db": "npx wrangler d1 execute analogs-db --local --file=./schema.sql",
-    "deploy-db": "npx wrangler d1 execute analogs-db --remote --file=./schema.sql"
+    "deploy-db": "npx wrangler d1 execute analogs-db --remote --file=./schema.sql",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@hono/eslint-config": "^2.1.0",
     "hono": "^4.12.7"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.0",
+    "@typescript-eslint/parser": "^8.57.0",
+    "@hono/eslint-config": "^2.1.0",
+    "hono": "^4.12.7",
+    "eslint": "^10.0.3",
     "wrangler": "^4.73.0"
   }
 }
