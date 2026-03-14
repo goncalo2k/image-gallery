@@ -12,15 +12,16 @@
   },
   "dependencies": {
     "@hono/eslint-config": "^2.1.0",
-    "hono": "^4.12.7"
+    "hono": "^4.12.7",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@hono/eslint-config": "^2.1.0",
     "@types/node": "^25.5.0",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
-    "@hono/eslint-config": "^2.1.0",
-    "hono": "^4.12.7",
     "eslint": "^10.0.3",
+    "hono": "^4.12.7",
     "wrangler": "^4.73.0"
   }
 }
