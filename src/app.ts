@@ -21,7 +21,6 @@ export interface Variables {
   correlationId: string
 }
 
-
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 
 app.use('*', cors());
