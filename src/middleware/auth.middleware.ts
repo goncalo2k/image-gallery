@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono"
-import { parseCsv } from "../utils/utils";
+import { parseCsv } from "../utils/utils"
 
 export function pathMatches(requestPath: string, protectedPath: string): boolean {
     if (protectedPath === '*') { return true }
@@ -23,7 +23,7 @@ export function shouldRequireAuth(c: Context): boolean {
     return protectedEndpoints.some(endpoint => pathMatches(c.req.path, endpoint));
 }
 
-export async function authMiddleware(c: Context, next: Next): Promise<any> {
+export async function authMiddleware(c: Context, next: Next): Promise<Response | void> {
     if (!shouldRequireAuth(c)) {
         return next();
     }

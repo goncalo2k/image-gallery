@@ -1,11 +1,10 @@
-import { swaggerUI } from '@hono/swagger-ui';
 import { Hono } from 'hono'
+import type pino from 'pino';
 import { authMiddleware } from './middleware/auth.middleware';
 import { corsMiddleware } from './middleware/cors.middleware';
 import { loggingMiddleware } from './middleware/logger-middleware';
 import { securityHeadersMiddleware } from './middleware/security-headers.middleware';
 import imageRoutes from './routes/image.routes';
-import pino from 'pino';
 
 export interface Bindings {
   ANALOGS_BUCKET: R2Bucket,

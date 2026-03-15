@@ -1,4 +1,4 @@
-interface Image {
+export interface Image {
     name: string;
     createdAt?: string;
     description: string;

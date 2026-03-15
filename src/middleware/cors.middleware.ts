@@ -5,7 +5,7 @@ import { parseCsv } from '../utils/utils';
 
 type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>
 
-export async function corsMiddleware(c: AppContext, next: Next): Promise<any> {
+export async function corsMiddleware(c: AppContext, next: Next): Promise<Response | void> {
     
     const allowedOrigins = parseCsv(c.env.ALLOWED_ORIGINS);
 

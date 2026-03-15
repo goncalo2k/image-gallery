@@ -1,9 +1,9 @@
 import type { Context } from "hono";
-import { STATUS_CODES } from "node:http";
 import type { ImageAuditLogs } from "../models/audit-logs";
 import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/image-requests";
 import type { DeleteResponse, ImageAuditLogsResponse, ImageListResponse, UploadResponse } from "../models/image-responses";
 import type { ImageMapper } from "../utils/image-mapper";
+import { Image } from "../models/image";
 
 export class ImageService {
     constructor(private mapperService: ImageMapper) { }
