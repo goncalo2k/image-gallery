@@ -1,10 +1,11 @@
+import { swaggerUI } from '@hono/swagger-ui';
 import { Hono } from 'hono'
-import { cors } from 'hono/cors';
-import { v4 as uuidv4 } from 'uuid';
 import { authMiddleware } from './middleware/auth.middleware';
 import { corsMiddleware } from './middleware/cors.middleware';
 import { loggingMiddleware } from './middleware/logger-middleware';
+import { securityHeadersMiddleware } from './middleware/security-headers.middleware';
 import imageRoutes from './routes/image.routes';
+import pino from 'pino';
 
 export interface Bindings {
   ANALOGS_BUCKET: R2Bucket,
@@ -18,6 +19,7 @@ export interface Bindings {
   ALLOWED_ORIGINS: string,
   ENABLE_AUTH: boolean,
   AUTH_ROUTES: string,
+  LOG_LEVEL: pino.Level
 }
 
 export interface Variables {
@@ -28,7 +30,8 @@ const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 
 app.use('*', loggingMiddleware());
 app.use('*', corsMiddleware);
-app.use('*', authMiddleware)
+app.use('*', authMiddleware);
+app.use('*', securityHeadersMiddleware());
 
 
 app.route('/images', imageRoutes);

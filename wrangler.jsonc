@@ -50,7 +50,8 @@
     "CLIENT_SECRET_HEADER": "CF-Access-Client-Secret",
     "ALLOWED_ORIGINS": "https://goncalo2k.pt/",
     "AUTH_ROUTES": "",
-    "ENABLE_AUTH": true
+    "ENABLE_AUTH": true,
+    "LOG_LEVEL": "info"
   },
   /**
 	 * Service Bindings (communicate between multiple Workers)

@@ -170,31 +170,34 @@ export class ImageService {
     }
 
     private async fetchExternalImage(c: Context, request: ImageUploadUrlRequest): Promise<File> {
-        let url;
-        try {
-            url = new URL(request.fileUrl);
-        } catch {
-            throw Error("Couldn't parse URL from body");
-        }
+         let url;
+         try {
+             url = new URL(request.fileUrl);
+         } catch (error) {
+             if (error instanceof Error) {
+                 throw Error(`Invalid URL: ${error.message}`);
+             }
+             throw Error("Couldn't parse URL from body");
+         }
 
-        const response = await fetch(url, {
-            redirect: 'follow'
-        });
+         const response = await fetch(url, {
+             redirect: 'follow'
+         });
 
-        if (!response.ok) {
-            throw Error("Couldn't fetch file from remote origin");
-        }
-        const contentType = response.headers.get('content-type');
+         if (!response.ok) {
+             throw Error("Couldn't fetch file from remote origin");
+         }
+         const contentType = response.headers.get('content-type');
 
-        if (!contentType?.includes('image')) {
-            throw Error("Remote file's content type is invalid");
-        }
+         if (!contentType?.includes('image')) {
+             throw Error("Remote file's content type is invalid");
+         }
 
-        const fileName = request.name || crypto.randomUUID();
-        const blob = await response.blob();
+         const fileName = request.name || crypto.randomUUID();
+         const blob = await response.blob();
 
-        return new File([blob], fileName, { type: contentType });
-    }
+         return new File([blob], fileName, { type: contentType });
+     }
 
     private async uploadImageMetadata(ANALOGS_METADATA_DB: D1Database, image: Image): Promise<boolean> {
         const result = await ANALOGS_METADATA_DB.prepare("INSERT INTO images (name, description, content_type) VALUES (?, ?, ?)")

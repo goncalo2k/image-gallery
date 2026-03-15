@@ -19,9 +19,27 @@
     "@typescript-eslint/parser": "^8.57.0",
     "eslint": "^10.0.3",
     "hono": "^4.12.7",
-    "wrangler": "^4.73.0",
-    "zod": "^4.3.6",
     "pino": "^10.3.1",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "validator": "^13.15.26",
+    "wrangler": "^4.73.0",
+    "zod": "^4.3.6"
+  },
+  "version": "1.0.0",
+  "description": "A modern image gallery API built with Cloudflare Workers, Hono framework, and D1 database.",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goncalo2k/image-gallery.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/goncalo2k/image-gallery/issues"
+  },
+  "homepage": "https://github.com/goncalo2k/image-gallery#readme",
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

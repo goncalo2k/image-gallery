@@ -34,10 +34,11 @@ export async function authMiddleware(c: Context, next: Next): Promise<any> {
     const clientId = c.req.header(clientIdHeader);
     const clientSecret = c.req.header(clientSecretHeader);
 
+    const encoder = new TextEncoder();
     const isAuthorized =
-        clientId === c.env.CLIENT_ID &&
-        clientSecret === c.env.CLIENT_SECRET;
-
+        crypto.subtle.timingSafeEqual(encoder.encode(clientId), encoder.encode(c.env.CLIENT_ID)) &&
+        crypto.subtle.timingSafeEqual(encoder.encode(clientSecret), encoder.encode(c.env.CLIENT_SECRET))
+        
     if (!isAuthorized) {
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }

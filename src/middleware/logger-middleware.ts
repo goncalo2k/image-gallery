@@ -17,17 +17,18 @@ export const loggingMiddleware = () => {
             msg: 'Incoming request',
             method: c.req.method,
             path: c.req.path,
-            body: c.req.bodyCache
+            correlationId: c.get('correlationId')
         });
-
+        
         const start = Date.now();
         await next();
         const durationMs = Date.now() - start;
-
+        
         logger.info({
             msg: 'Outgoing response',
             status: c.res.status,
-            durationMs
+            durationMs,
+            correlationId: c.get('correlationId')
         });
     };
 };

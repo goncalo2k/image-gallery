@@ -63,7 +63,6 @@ export class ImageController {
             return c.json({ errorMessage: 'Failed to get image.' }, 500)
         }
     }
-    //TODO: Add support for multipartuploads?
     async uploadImage(c: Context): Promise<Response> {
         try {
             const formData = await c.req.formData();
@@ -77,7 +76,6 @@ export class ImageController {
         }
     }
 
-    //TODO: Add support for multipartuploads?
     async uploadExternalSourceImage(c: Context): Promise<Response> {
         try {
             const formData = await c.req.formData();
