@@ -1,5 +1,6 @@
-import { Context } from 'hono';
-import pino, { Logger } from 'pino';
+import type { Context } from 'hono';
+import type { Logger } from 'pino';
+import pino from 'pino';
 
 /**
  * Create a base pino logger.

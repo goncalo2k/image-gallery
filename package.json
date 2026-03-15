@@ -12,18 +12,16 @@
   },
   "dependencies": {
     "@hono/eslint-config": "^2.1.0",
-    "hono": "^4.12.7",
-    "openapi": "^1.0.1",
-    "pino": "^10.3.1",
-    "uuid": "^13.0.0"
-  },
-  "devDependencies": {
-    "@hono/eslint-config": "^2.1.0",
+    "@hono/swagger-ui": "^0.6.1",
+    "@hono/zod-openapi": "^1.2.2",
     "@types/node": "^25.5.0",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
     "eslint": "^10.0.3",
     "hono": "^4.12.7",
-    "wrangler": "^4.73.0"
+    "wrangler": "^4.73.0",
+    "zod": "^4.3.6",
+    "pino": "^10.3.1",
+    "uuid": "^13.0.0"
   }
 }

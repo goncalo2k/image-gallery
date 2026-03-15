@@ -3,34 +3,32 @@ import type { ImageService } from '../services/image.service';
 import type { ImageMapper } from '../utils/image-mapper';
 import { requestLogger } from '../utils/logger';
 
-
 export class ImageController {
     constructor(private imageService: ImageService, private mapperService: ImageMapper,) { }
 
-    //TODO: 
-    async getImagesAudit(c: Context): Promise<any> {
+    async getImagesAudit(c: Context): Promise<Response> {
         try {
-            return;
-        }
-        catch (error) {
-            const logger = requestLogger(c);
-            logger.error(`Failed to get audit logs: ${error}`);
-            return c.json({ message: 'Failed to get audit logs.' }, 500)
-        }
-    }
-    //Add auth
-    async getImages(c: Context): Promise<any> {
-        try {
-            const images = await this.imageService.getImagesMetadata(c);
-            return c.json(images);
+            const auditLogs = await this.imageService.getImagesAuditLogs(c);
+            return c.json({ data: auditLogs });
         } catch (error) {
             const logger = requestLogger(c);
-            logger.error(`Failed to get images: ${error}`);
-            return c.json({ message: 'Failed to get images.' }, 500)
+            logger.error(`Failed to get audit logs: ${error}`);
+            return c.json({ errorMessage: 'Failed to get audit logs.' }, 500)
         }
     }
 
-    async getImage(c: Context): Promise<any> {
+    async getImagesMetada(c: Context): Promise<Response> {
+        try {
+            const imagesReponse = await this.imageService.getImagesMetadata(c);
+            return c.json(imagesReponse, 200);
+        } catch (error) {
+            const logger = requestLogger(c);
+            logger.error(`Failed to get images: ${error}`);
+            return c.json({ errorMessage: 'Failed to get images.' }, 500)
+        }
+    }
+
+    async getImage(c: Context): Promise<Response> {
         const name = String(c.req.param('name'));
         try {
             const image = await this.imageService.getImageByName(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, name);
@@ -41,7 +39,7 @@ export class ImageController {
                         'Content-Type': image.contentType,
                         [headerName]: image.description,
                         'Cache-Control': 'public, max-age=31536000, immutable',
-                        'ETag': `"${name}-${image.updatedAt}"`,
+                        'ETag': `"${name}-${image.createdAt}"`,
                         'Accept-Ranges': 'bytes'
                     },
                 })
@@ -54,54 +52,56 @@ export class ImageController {
                 } catch (cacheError) {
                     console.warn('Failed to cache image:', cacheError);
                 }
+
                 return response;
 
             }
-            return c.notFound();
+            return c.json({ errorMessage: `Failed to get image with name ${name}.` }, 500)
         } catch (error) {
             const logger = requestLogger(c);
             logger.error(`Failed to get image named ${name}: ${error}`);
-            return c.json({ message: 'Failed to get image.' }, 500)
+            return c.json({ errorMessage: 'Failed to get image.' }, 500)
         }
     }
     //TODO: Add support for multipartuploads?
-    //Add optional auth with feature flag
-    async uploadImage(c: Context): Promise<any> {
+    async uploadImage(c: Context): Promise<Response> {
         try {
             const formData = await c.req.formData();
             const request = this.mapperService.mapFormDataToImageUploadFileRequest(formData);
-            const isUploaded = await this.imageService.uploadImage(c, request);
-            return c.json({ message: isUploaded ? 'Successfully uploaded image.' : 'Failed to upload image from file.' }, isUploaded ? 201 : 500);
+            const uploadResponse = await this.imageService.uploadImage(c, request);
+            return c.json(uploadResponse, !uploadResponse.errorMessage ? (uploadResponse.status ?? 201) : 500);
         } catch (error) {
             const logger = requestLogger(c);
             logger.error(`Failed to upload image from file: ${error}`);
-            return c.json({ message: 'Failed to upload image from file.' }, 500)
+            return c.json({ errorMessage: `Failed to upload image from file: ${error}` }, 500)
         }
     }
 
-    //Add optional auth with feature flag
-    async uploadExternalSourceImage(c: Context): Promise<any> {
+    //TODO: Add support for multipartuploads?
+    async uploadExternalSourceImage(c: Context): Promise<Response> {
         try {
             const formData = await c.req.formData();
             const request = this.mapperService.mapFormDataToImageUploadUrlRequest(formData);
-            const isUploaded = await this.imageService.uploadExternalImage(c, request);
-            return c.json({ message: isUploaded ? 'Successfully uploaded image.' : 'Failed to upload image from external source.' }, isUploaded ? 201 : 500)
+            const uploadResponse = await this.imageService.uploadExternalImage(c, request);
+            return c.json(uploadResponse, !uploadResponse.errorMessage ? (uploadResponse.status ?? 201) : 500);
         } catch (error) {
             const logger = requestLogger(c);
             logger.error(`Failed to upload image from external source: ${error}`);
-            return c.json({ message: 'Failed to upload image from external source.' }, 500)
+            return c.json({ errorMessage: 'Failed to upload image from external source.' }, 500)
         }
     }
 
-    async deleteImage(c: Context): Promise<any> {
+    async deleteImage(c: Context): Promise<Response> {
         const name = String(c.req.param('name'));
         try {
-            await this.imageService.deleteImage(c, name);
+            const deletedResponse = await this.imageService.deleteImage(c, name);
+            if (deletedResponse.status === 500) {throw Error(`Couldn't delete image.`);}
+            return c.json(undefined, deletedResponse.status);
         }
         catch (error) {
             const logger = requestLogger(c);
             logger.error(`Failed to delete image named ${name}: ${error}`);
-            return c.json({ message: 'Failed to delete image.' }, 500)
+            return c.json({ errorMessage: 'Failed to delete image.' }, 500)
         }
     }
 }

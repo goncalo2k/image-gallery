@@ -47,7 +47,10 @@
   "vars": {
     "ALT_HEADER_NAME": "x-image-alt-desc",
     "CLIENT_ID_HEADER": "CF-Access-Client-Id",
-    "CLIENT_SECRET_HEADER": "CF-Access-Client-Secret"
+    "CLIENT_SECRET_HEADER": "CF-Access-Client-Secret",
+    "ALLOWED_ORIGINS": "https://goncalo2k.pt/",
+    "AUTH_ROUTES": "",
+    "ENABLE_AUTH": true
   },
   /**
 	 * Service Bindings (communicate between multiple Workers)

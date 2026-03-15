@@ -1,0 +1,46 @@
+import type { Context, Next } from "hono"
+import { parseCsv } from "../utils/utils";
+
+export function pathMatches(requestPath: string, protectedPath: string): boolean {
+    if (protectedPath === '*') { return true }
+    return requestPath === protectedPath || requestPath.startsWith(`${protectedPath}/`)
+}
+
+export function shouldRequireAuth(c: Context): boolean {
+    const authEnabled = c.env.ENABLE_AUTH;
+    if (!authEnabled) { return false; }
+
+    const protectedEndpoints = parseCsv(c.env.AUTH_ROUTES);
+
+    if (pathMatches(c.req.path, '/') || pathMatches(c.req.path, '/health')) {
+        return false;
+    }
+
+    if (protectedEndpoints.length === 0) {
+        return true;
+    }
+
+    return protectedEndpoints.some(endpoint => pathMatches(c.req.path, endpoint));
+}
+
+export async function authMiddleware(c: Context, next: Next): Promise<any> {
+    if (!shouldRequireAuth(c)) {
+        return next();
+    }
+
+    const clientIdHeader = c.env.CLIENT_ID_HEADER;
+    const clientSecretHeader = c.env.CLIENT_SECRET_HEADER;
+
+    const clientId = c.req.header(clientIdHeader);
+    const clientSecret = c.req.header(clientSecretHeader);
+
+    const isAuthorized =
+        clientId === c.env.CLIENT_ID &&
+        clientSecret === c.env.CLIENT_SECRET;
+
+    if (!isAuthorized) {
+        return c.json({ errorMessage: 'Unauthorized' }, 401);
+    }
+
+    await next();
+}

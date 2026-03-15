@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
-import imageRoutes from './routes/image.routes';
-// src/app.ts (add near the top, after imports)
-import { v4 as uuidv4 } from 'uuid';
 import { cors } from 'hono/cors';
-import { requestLogger } from './utils/logger';
+import { v4 as uuidv4 } from 'uuid';
+import { authMiddleware } from './middleware/auth.middleware';
+import { corsMiddleware } from './middleware/cors.middleware';
 import { loggingMiddleware } from './middleware/logger-middleware';
+import imageRoutes from './routes/image.routes';
 
 export interface Bindings {
   ANALOGS_BUCKET: R2Bucket,
@@ -15,6 +15,9 @@ export interface Bindings {
   CLIENT_SECRET_HEADER: string,
   CLIENT_ID: string,
   CLIENT_SECRET: string,
+  ALLOWED_ORIGINS: string,
+  ENABLE_AUTH: boolean,
+  AUTH_ROUTES: string,
 }
 
 export interface Variables {
@@ -23,17 +26,19 @@ export interface Variables {
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 
-app.use('*', cors());
 app.use('*', loggingMiddleware());
+app.use('*', corsMiddleware);
+app.use('*', authMiddleware)
+
 
 app.route('/images', imageRoutes);
 
 app.get('/', (c) => {
   return c.json({
     message: 'service healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    timestamp: new Date().toISOString()
   }, 200)
 })
 
-export default app
+
+export default app;

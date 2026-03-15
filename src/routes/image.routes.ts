@@ -11,7 +11,7 @@ imageRoutes.get('/audit', (c) => imageController.getImagesAudit(c))
 imageRoutes.post('/external', (c) => imageController.uploadExternalSourceImage(c))
 imageRoutes.get('/:name', (c) => imageController.getImage(c))
 imageRoutes.delete('/:name', (c) => imageController.deleteImage(c))
+imageRoutes.get('/', (c) => imageController.getImagesMetada(c))
 imageRoutes.post('/', (c) => imageController.uploadImage(c))
-imageRoutes.get('/', (c) => imageController.getImages(c))
 
 export default imageRoutes

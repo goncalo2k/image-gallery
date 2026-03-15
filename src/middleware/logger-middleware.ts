@@ -1,7 +1,7 @@
-import { Context } from "hono";
-import { Bindings, Variables } from "../app";
-
+import type { Context } from "hono";
 import { v4 as uuidv4 } from 'uuid';
+import type { Bindings, Variables } from "../app";
+
 import { requestLogger } from "../utils/logger";
 
 
@@ -17,7 +17,7 @@ export const loggingMiddleware = () => {
             msg: 'Incoming request',
             method: c.req.method,
             path: c.req.path,
-            query: c.req.query()
+            body: c.req.bodyCache
         });
 
         const start = Date.now();

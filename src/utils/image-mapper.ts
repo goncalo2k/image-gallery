@@ -1,3 +1,5 @@
+import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/image-requests";
+
 export class ImageMapper {
 
     mapFormDataToImageUploadFileRequest(formData: FormData): ImageUploadFileRequest {
@@ -7,13 +9,17 @@ export class ImageMapper {
             description: formData.get('description')
         } as ImageUploadFileRequest;
     }
-    
+
     mapFormDataToImageUploadUrlRequest(formData: FormData): ImageUploadUrlRequest {
         return {
             name: formData.get('name'),
             fileUrl: formData.get('fileUrl'),
             description: formData.get('description')
         } as ImageUploadUrlRequest;
+    }
+
+    mapImageUploadUrlRequestToImageUploadFileRequest(request: ImageUploadUrlRequest, file: File): ImageUploadFileRequest {
+        return { file, name: request.name, description: request.description };
     }
 
     mapImageMetadataToImage(imageRequest: ImageUploadFileRequest, imageName: string, imageDescription: string): Image {
@@ -23,5 +29,11 @@ export class ImageMapper {
             contentType: imageRequest.file.type,
             file: imageRequest.file,
         } as Image;
+    }
+
+    mapImageToPartialImage(image: Image): Partial<Image> {
+        return {
+            name: image.name, description: image.description, contentType: image.contentType, createdAt: image.createdAt
+        } as Partial<Image>;
     }
 }
