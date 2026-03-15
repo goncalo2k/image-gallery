@@ -7,10 +7,11 @@ const imageRoutes = new Hono()
 const mapperService = new ImageMapper();
 const imageController = new ImageController(new ImageService(mapperService), mapperService);
 
-imageRoutes.get('/', (c) => imageController.getImages(c))
-imageRoutes.get('/:name', (c) => imageController.getImage(c))
-imageRoutes.post('/', (c) => imageController.uploadImage(c))
-imageRoutes.post('/external', (c) => imageController.uploadExternalSourceImage(c))
 imageRoutes.get('/audit', (c) => imageController.getImagesAudit(c))
+imageRoutes.post('/external', (c) => imageController.uploadExternalSourceImage(c))
+imageRoutes.get('/:name', (c) => imageController.getImage(c))
+imageRoutes.delete('/:name', (c) => imageController.deleteImage(c))
+imageRoutes.post('/', (c) => imageController.uploadImage(c))
+imageRoutes.get('/', (c) => imageController.getImages(c))
 
 export default imageRoutes
