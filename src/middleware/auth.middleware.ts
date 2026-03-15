@@ -1,4 +1,7 @@
-import type { Context, Next } from "hono"
+/* eslint-disable @typescript-eslint/no-invalid-void-type */
+
+import type { Next } from "hono"
+import type { AppContext } from "../app";
 import { parseCsv } from "../utils/utils"
 
 export function pathMatches(requestPath: string, protectedPath: string): boolean {
@@ -6,7 +9,7 @@ export function pathMatches(requestPath: string, protectedPath: string): boolean
     return requestPath === protectedPath || requestPath.startsWith(`${protectedPath}/`)
 }
 
-export function shouldRequireAuth(c: Context): boolean {
+export function shouldRequireAuth(c: AppContext): boolean {
     const authEnabled = c.env.ENABLE_AUTH;
     if (!authEnabled) { return false; }
 
@@ -23,7 +26,7 @@ export function shouldRequireAuth(c: Context): boolean {
     return protectedEndpoints.some(endpoint => pathMatches(c.req.path, endpoint));
 }
 
-export async function authMiddleware(c: Context, next: Next): Promise<Response | void> {
+export async function authMiddleware(c: AppContext, next: Next): Promise<Response | void> {
     if (!shouldRequireAuth(c)) {
         return next();
     }

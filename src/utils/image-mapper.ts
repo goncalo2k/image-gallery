@@ -1,3 +1,4 @@
+import type { Image } from "../models/image";
 import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/image-requests";
 
 export class ImageMapper {

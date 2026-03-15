@@ -1,14 +1,14 @@
-import type { Context } from 'hono';
 import type { Logger } from 'pino';
 import pino from 'pino';
+import type { AppContext } from '../app';
 
 /**
  * Returns a logger scoped to the current request (path + method) and
  * extracts the correlation ID from the Hono context (set by middleware).
  */
-export function requestLogger(c: Context): Logger {
+export function requestLogger(c: AppContext): Logger {
 
-  const level = c.env.LOG_LEVEL;
+  const level: string = c.env.LOG_LEVEL as string;
   const baseLogger = pino(
     {
       level,
@@ -31,7 +31,7 @@ export function requestLogger(c: Context): Logger {
       },
     },
   );
-  const cid = c.get('correlationId') ?? 'unknown';
+  const cid = c.get('correlationId') || 'unknown';
   return baseLogger.child({
     correlationId: cid,
     path: c.req.path,

@@ -1,22 +1,31 @@
-import type { Context } from "hono";
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+
+import type { AppContext } from "../app";
 import type { ImageAuditLogs } from "../models/audit-logs";
+import type { Image } from "../models/image";
 import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/image-requests";
 import type { DeleteResponse, ImageAuditLogsResponse, ImageListResponse, UploadResponse } from "../models/image-responses";
 import type { ImageMapper } from "../utils/image-mapper";
-import { Image } from "../models/image";
 
 export class ImageService {
     constructor(private mapperService: ImageMapper) { }
 
-    async getImagesMetadata(c: Context): Promise<ImageListResponse> {
+    async getImagesMetadata(c: AppContext): Promise<ImageListResponse> {
         //TODO: Add pagination to this endpoint
         const pageSize = 50;
-        const response = await c.env.ANALOGS_METADATA_DB.prepare('Select * from images LIMIT ?').bind(pageSize).run() as D1Result;
+        const response = await c.env.ANALOGS_METADATA_DB.prepare('Select * from images LIMIT ?').bind(pageSize).run();
         if (!response.results) {
             throw Error('Failed to fetch all images from D1');
         }
 
-        return { data: response.results as Image[], count: response.results.length };
+        const results: Partial<Image>[] = response.results.map((row) => ({
+            name: String(row.name),
+            description: String(row.description),
+            contentType: String(row.contentType),
+            // add any other Image fields here
+        }));
+
+        return { data: results, count: response.results.length };
     }
 
     async getImageByName(ANALOGS_BUCKET: R2Bucket, ANALOGS_METADATA_DB: D1Database, name: string): Promise<Image | undefined> {
@@ -38,7 +47,7 @@ export class ImageService {
         return { file: file, description, name, contentType, createdAt } as Image;
     }
 
-    async uploadImage(c: Context, body: ImageUploadFileRequest): Promise<UploadResponse> {
+    async uploadImage(c: AppContext, body: ImageUploadFileRequest): Promise<UploadResponse> {
         const imageName = body.name ?? body.file.name;
         let isBlobUploaded = false;
         try {
@@ -90,16 +99,16 @@ export class ImageService {
                         if (!result) {
                             // Clean up blob if metadata upload fails
                             if (isBlobUploaded) {
-                                this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch(cleanupError => {
+                                this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch((cleanupError: unknown) => {
                                     console.error('Cleanup failed:', cleanupError);
                                 });
                             }
                         }
                     })
-                    .catch(error => {
+                    .catch((error: unknown) => {
                         console.error('Background metadata upload failed:', error);
                         if (isBlobUploaded) {
-                            this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch(cleanupError => {
+                            this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch((cleanupError: unknown) => {
                                 console.error('Cleanup failed:', cleanupError);
                             });
                         }
@@ -107,20 +116,20 @@ export class ImageService {
             );
 
             return { data: this.mapperService.mapImageToPartialImage(image) };
-        } catch (error) {
-            await this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch(cleanupError => {
+        } catch (error: unknown) {
+            await this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch((cleanupError: unknown) => {
                 console.error('Cleanup failed:', cleanupError);
             });
             throw error;
         }
     }
 
-    async uploadExternalImage(c: Context, body: ImageUploadUrlRequest): Promise<UploadResponse> {
-        const file = await this.fetchExternalImage(c, body);
+    async uploadExternalImage(c: AppContext, body: ImageUploadUrlRequest): Promise<UploadResponse> {
+        const file = await this.fetchExternalImage(body);
         return await this.uploadImage(c, this.mapperService.mapImageUploadUrlRequestToImageUploadFileRequest(body, file));
     }
 
-    async getImagesAuditLogs(c: Context): Promise<ImageAuditLogsResponse> {
+    async getImagesAuditLogs(c: AppContext): Promise<ImageAuditLogsResponse> {
         const metadataPromise = c.env.ANALOGS_METADATA_DB.prepare(
             'SELECT name, description, content_type, created_at FROM images ORDER BY created_at DESC'
         ).all();
@@ -160,7 +169,7 @@ export class ImageService {
     }
 
     //TODO: Add auth
-    async deleteImage(c: Context, name: string): Promise<DeleteResponse> {
+    async deleteImage(c: AppContext, name: string): Promise<DeleteResponse> {
         const [blobResult, metadataResult] = await Promise.allSettled([
             this.deleteImageBlob(c.env.ANALOGS_BUCKET, name),
             this.deleteImageMetadata(c.env.ANALOGS_METADATA_DB, name)
@@ -169,35 +178,35 @@ export class ImageService {
         return { status: blobResult.status === 'fulfilled' && metadataResult.status === 'fulfilled' && metadataResult.value.meta.changed_db && metadataResult.value.success ? 200 : 500 }
     }
 
-    private async fetchExternalImage(c: Context, request: ImageUploadUrlRequest): Promise<File> {
-         let url;
-         try {
-             url = new URL(request.fileUrl);
-         } catch (error) {
-             if (error instanceof Error) {
-                 throw Error(`Invalid URL: ${error.message}`);
-             }
-             throw Error("Couldn't parse URL from body");
-         }
+    private async fetchExternalImage(request: ImageUploadUrlRequest): Promise<File> {
+        let url;
+        try {
+            url = new URL(request.fileUrl);
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                throw Error(`Invalid URL: ${error.message}`);
+            }
+            throw Error("Couldn't parse URL from body");
+        }
 
-         const response = await fetch(url, {
-             redirect: 'follow'
-         });
+        const response = await fetch(url, {
+            redirect: 'follow'
+        });
 
-         if (!response.ok) {
-             throw Error("Couldn't fetch file from remote origin");
-         }
-         const contentType = response.headers.get('content-type');
+        if (!response.ok) {
+            throw Error("Couldn't fetch file from remote origin");
+        }
+        const contentType = response.headers.get('content-type');
 
-         if (!contentType?.includes('image')) {
-             throw Error("Remote file's content type is invalid");
-         }
+        if (!contentType?.includes('image')) {
+            throw Error("Remote file's content type is invalid");
+        }
 
-         const fileName = request.name || crypto.randomUUID();
-         const blob = await response.blob();
+        const fileName = request.name ?? crypto.randomUUID();
+        const blob = await response.blob();
 
-         return new File([blob], fileName, { type: contentType });
-     }
+        return new File([blob], fileName, { type: contentType });
+    }
 
     private async uploadImageMetadata(ANALOGS_METADATA_DB: D1Database, image: Image): Promise<boolean> {
         const result = await ANALOGS_METADATA_DB.prepare("INSERT INTO images (name, description, content_type) VALUES (?, ?, ?)")
@@ -227,11 +236,11 @@ export class ImageService {
         return true;
     }
 
-    private async deleteImageMetadata(ANALOGS_METADATA_DB: D1Database, name: string): Promise<any> {
+    private async deleteImageMetadata(ANALOGS_METADATA_DB: D1Database, name: string): Promise<D1Result> {
         return await ANALOGS_METADATA_DB.prepare("DELETE FROM images WHERE name = ?").bind(name).run();
     }
 
-    private async deleteImageBlob(ANALOGS_BUCKET: R2Bucket, name: string): Promise<any> {
+    private async deleteImageBlob(ANALOGS_BUCKET: R2Bucket, name: string): Promise<void> {
         await ANALOGS_BUCKET.delete(name);
     }
 
