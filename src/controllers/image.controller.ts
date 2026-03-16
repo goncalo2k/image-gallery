@@ -2,6 +2,7 @@ import type { AppContext } from '../app';
 import type { ImageService } from '../services/image.service';
 import type { ImageMapper } from '../utils/image-mapper';
 import { requestLogger } from '../utils/logger';
+import { parseErrorMessage } from '../utils/utils';
 
 export class ImageController {
     constructor(private imageService: ImageService, private mapperService: ImageMapper,) { }
@@ -12,7 +13,7 @@ export class ImageController {
             return c.json({ data: auditLogs });
         } catch (error: unknown) {
             const logger = requestLogger(c);
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = parseErrorMessage(error);
             logger.error(`Failed to get audit logs: ${errorMessage}`);
             return c.json({ errorMessage: 'Failed to get audit logs.' }, 500)
         }
@@ -24,7 +25,7 @@ export class ImageController {
             return c.json(imagesReponse, 200);
         } catch (error: unknown) {
             const logger = requestLogger(c);
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = parseErrorMessage(error);
             logger.error(`Failed to get images: ${errorMessage}`);
             return c.json({ errorMessage: 'Failed to get images.' }, 500)
         }
@@ -34,34 +35,37 @@ export class ImageController {
         const name = String(c.req.param('name'));
         try {
             const image = await this.imageService.getImageByName(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, name);
-            const headerName = c.env.ALT_HEADER_NAME;
-            if (image?.description && image.contentType) {
-                const response = new Response(image.file, {
-                    headers: {
-                        'Content-Type': image.contentType,
-                        [headerName]: image.description,
-                        'Cache-Control': 'public, max-age=31536000, immutable',
-                        'ETag': `"${name}-${image.createdAt}"`,
-                        'Accept-Ranges': 'bytes'
-                    },
-                })
-                try {
-                    c.executionCtx.waitUntil(
-                        caches.default.put(c.req.raw, response.clone()).catch((cacheError: unknown) => {
-                            console.warn('Failed to cache image:', cacheError);
-                        })
-                    );
-                } catch (cacheError) {
-                    console.warn('Failed to cache image:', cacheError);
-                }
-
-                return response;
-
+            if (!image) {
+                return c.json({ errorMessage: `Image ${name} not found` }, 404);
             }
-            return c.json({ errorMessage: `Failed to get image with name ${name}.` }, 500)
+            if (!image.description || !image.contentType) {
+                return c.json({ errorMessage: `Image ${name} not found` }, 404);
+            }
+
+            const headerName = c.env.ALT_HEADER_NAME;
+            const response = new Response(image.file, {
+                headers: {
+                    'Content-Type': image.contentType,
+                    [headerName]: image.description,
+                    'Cache-Control': 'public, max-age=31536000, immutable',
+                    'ETag': `"${name}-${image.createdAt}"`,
+                    'Accept-Ranges': 'bytes'
+                },
+            });
+            try {
+                c.executionCtx.waitUntil(
+                    caches.default.put(c.req.raw, response.clone()).catch((cacheError: unknown) => {
+                        console.warn('Failed to cache image:', cacheError);
+                    })
+                );
+            } catch (cacheError) {
+                console.warn('Failed to cache image:', cacheError);
+            }
+
+            return response;
         } catch (error: unknown) {
             const logger = requestLogger(c);
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = parseErrorMessage(error);
             logger.error(`Failed to get image named ${name}: ${errorMessage}`);
             return c.json({ errorMessage: 'Failed to get image.' }, 500)
         }
@@ -71,10 +75,11 @@ export class ImageController {
             const formData = await c.req.formData();
             const request = this.mapperService.mapFormDataToImageUploadFileRequest(formData);
             const uploadResponse = await this.imageService.uploadImage(c, request);
-            return c.json(uploadResponse, !uploadResponse.errorMessage ? (uploadResponse.status ?? 201) : 500);
+            const status = uploadResponse.status ?? (uploadResponse.errorMessage ? 500 : 201);
+            return c.json(uploadResponse, status);
         } catch (error: unknown) {
             const logger = requestLogger(c);
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = parseErrorMessage(error);
             logger.error(`Failed to upload image from file: ${errorMessage}`);
             return c.json({ errorMessage: `Failed to upload image from file: ${errorMessage}` }, 500)
         }
@@ -85,10 +90,11 @@ export class ImageController {
             const formData = await c.req.formData();
             const request = this.mapperService.mapFormDataToImageUploadUrlRequest(formData);
             const uploadResponse = await this.imageService.uploadExternalImage(c, request);
-            return c.json(uploadResponse, !uploadResponse.errorMessage ? (uploadResponse.status ?? 201) : 500);
+            const status = uploadResponse.status ?? (uploadResponse.errorMessage ? 500 : 201);
+            return c.json(uploadResponse, status);
         } catch (error: unknown) {
             const logger = requestLogger(c);
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = parseErrorMessage(error);
             logger.error(`Failed to upload image from external source: ${errorMessage}`);
             return c.json({ errorMessage: 'Failed to upload image from external source.' }, 500)
         }
@@ -103,7 +109,7 @@ export class ImageController {
         }
         catch (error: unknown) {
             const logger = requestLogger(c);
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = parseErrorMessage(error);
             logger.error(`Failed to delete image named ${name}: ${errorMessage}`);
             return c.json({ errorMessage: 'Failed to delete image.' }, 500)
         }

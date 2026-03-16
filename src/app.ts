@@ -19,6 +19,8 @@ export interface AppEnv {
 export interface Bindings {
   ANALOGS_BUCKET: R2Bucket,
   AI: Ai,
+  IMAGES: ImagesBinding,
+  MAX_UPLOAD_SIZE_MB: number,
   ANALOGS_METADATA_DB: D1Database,
   ALT_HEADER_NAME: string,
   CLIENT_ID_HEADER: string,

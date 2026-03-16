@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import { faker } from '@faker-js/faker';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import type { Mock } from 'vitest';
@@ -48,7 +46,10 @@ const createMapperMock = () => {
 };
 
 const createContext = (overrides?: Partial<AppContext>) => {
-  const jsonSpy = vi.fn((body: unknown, status = 200) => ({ body, status }));
+  const jsonSpy = vi.fn((body: unknown, init?: number | ResponseInit) => {
+    const status = typeof init === 'number' ? init : init?.status ?? 200;
+    return { body, status } as Response;
+  });
   const baseReq = {
     path: faker.internet.url(),
     method: faker.internet.httpMethod(),
@@ -186,6 +187,26 @@ describe('ImageController', () => {
     expect(response.headers.get('X-Image-Alt')).toBe(description);
   });
 
+  it('returns 404 response when image is missing', async () => {
+    const { service, mocks: serviceMocks } = createServiceMock();
+    const { mapper } = createMapperMock();
+    const controller = new ImageController(service, mapper);
+    const name = faker.string.uuid();
+    const { ctx, jsonSpy } = createContext({
+      req: {
+        param: vi.fn().mockReturnValue(name),
+        raw: new Request(`https://example.com/images/${name}`),
+      } as unknown as AppContext['req'],
+    });
+
+    (serviceMocks.getImageByName as Mock).mockResolvedValue(undefined);
+
+    const response = await controller.getImage(ctx);
+
+    expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: `Image ${name} not found` }, 404);
+    expect(response).toEqual({ body: { errorMessage: `Image ${name} not found` }, status: 404 });
+  });
+
   it('uploads image via mapper and service', async () => {
     const { service, mocks: serviceMocks } = createServiceMock();
     const { mapper, mocks: mapperMocks } = createMapperMock();
@@ -248,5 +269,26 @@ describe('ImageController', () => {
 
     expect(serviceMocks.deleteImage).toHaveBeenCalledWith(ctx, name);
     expect(response).toEqual({ body: undefined, status: 204 });
+  });
+
+  it('propagates bad requests from service during upload', async () => {
+    const { service, mocks: serviceMocks } = createServiceMock();
+    const { mapper, mocks: mapperMocks } = createMapperMock();
+    const controller = new ImageController(service, mapper);
+    const formData = new FormData();
+    const mappedRequest = { file: new File(['body'], 'test.png', { type: 'image/png' }) };
+    (mapperMocks.mapFormDataToImageUploadFileRequest as Mock).mockReturnValue(mappedRequest);
+    (serviceMocks.uploadImage as Mock).mockResolvedValue({ errorMessage: 'Invalid file name format', status: 400 });
+
+    const { ctx, jsonSpy } = createContext({
+      req: {
+        formData: vi.fn().mockResolvedValue(formData),
+      } as unknown as AppContext['req'],
+    });
+
+    const response = await controller.uploadImage(ctx);
+
+    expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: 'Invalid file name format', status: 400 }, 400);
+    expect(response).toEqual({ body: { errorMessage: 'Invalid file name format', status: 400 }, status: 400 });
   });
 });

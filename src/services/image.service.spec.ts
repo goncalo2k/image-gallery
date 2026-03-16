@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
 import { faker } from '@faker-js/faker';
 import { describe, it, expect, vi } from 'vitest';
-import type { AppContext } from '../app';
+import type { AppContext, Bindings } from '../app';
 import type { ImageUploadFileRequest } from '../models/image-requests';
 import { ImageMapper } from '../utils/image-mapper';
 import { ImageService } from './image.service';
@@ -41,6 +43,36 @@ const createDatabaseMock = (rows: Record<string, unknown>[], total = rows.length
       } as unknown as D1PreparedStatement;
     }),
   } as unknown as D1Database;
+};
+
+const createImagesBindingMock = (resizedBuffer: ArrayBuffer) => {
+  const responseMock = {
+    arrayBuffer: vi.fn().mockResolvedValue(resizedBuffer),
+  } as unknown as Response;
+
+  const outputSpy = vi.fn().mockResolvedValue({
+    response: () => responseMock,
+  });
+
+  const transformSpy = vi.fn();
+  const transformer = {
+    transform: transformSpy,
+    output: outputSpy,
+  };
+  transformSpy.mockReturnValue(transformer);
+
+  const inputSpy = vi.fn().mockReturnValue(transformer);
+
+  return {
+    binding: {
+      input: inputSpy,
+    } as unknown as Bindings['IMAGES'],
+    spies: {
+      inputSpy,
+      transformSpy,
+      outputSpy,
+    },
+  };
 };
 
 describe('ImageService.getImagesMetadata', () => {
@@ -136,7 +168,7 @@ describe('ImageService validation', () => {
     ).rejects.toThrow('Invalid file name format');
   });
 
-  it('rejects invalid names on upload', async () => {
+  it('flags invalid names on upload', async () => {
     const ctx = {
       env: {
         ANALOGS_BUCKET: {} as R2Bucket,
@@ -151,6 +183,97 @@ describe('ImageService validation', () => {
       file: new File(['content'], '../invalid', { type: 'image/png' }),
     } as ImageUploadFileRequest;
 
-    await expect(service.uploadImage(ctx, body)).rejects.toThrow('Invalid file name format');
+    const response = await service.uploadImage(ctx, body);
+    expect(response).toEqual({ errorMessage: 'Invalid file name format', status: 400 });
+  });
+
+  it('flags missing file uploads', async () => {
+    const ctx = {
+      env: {
+        ANALOGS_BUCKET: {} as R2Bucket,
+        ANALOGS_METADATA_DB: {} as D1Database,
+        AI: {} as Ai,
+        IMAGES: {} as Bindings['IMAGES'],
+        MAX_UPLOAD_SIZE_MB: 20,
+      },
+      executionCtx: { waitUntil: vi.fn() },
+    } as unknown as AppContext;
+
+    const body = {
+      file: undefined,
+    } as unknown as ImageUploadFileRequest;
+
+    const response = await service.uploadImage(ctx, body);
+    expect(response).toEqual({ errorMessage: 'No file was uploaded', status: 400 });
+  });
+
+  it('rejects files that exceed the configured upload size limit', async () => {
+    const ctx = {
+      env: {
+        ANALOGS_BUCKET: {} as R2Bucket,
+        ANALOGS_METADATA_DB: {} as D1Database,
+        AI: {} as Ai,
+        IMAGES: {} as Bindings['IMAGES'],
+        MAX_UPLOAD_SIZE_MB: 2,
+      },
+      executionCtx: { waitUntil: vi.fn() },
+    } as unknown as AppContext;
+
+    const oversizedFile = new File([new Uint8Array(3 * 1024 * 1024)], 'large.png', { type: 'image/png' });
+    const body = {
+      file: oversizedFile,
+    } as ImageUploadFileRequest;
+
+    const response = await service.uploadImage(ctx, body);
+
+    expect(response).toEqual({ errorMessage: 'The uploaded file is too big - try files under 2mb', status: 400 });
+  });
+});
+
+describe('ImageService AI integration', () => {
+  const service = new ImageService(mapper);
+  const internals = service as unknown as {
+    generateImageAltText: (ai: Ai, images: Bindings['IMAGES'] | undefined, buffer: ArrayBuffer) => Promise<string>;
+    resizeImageForAI: (images: Bindings['IMAGES'] | undefined, buffer: ArrayBuffer) => Promise<ArrayBuffer>;
+  };
+
+  it('resizes large buffers before invoking the AI model', async () => {
+    const resizedBuffer = new Uint8Array([9, 9, 9]).buffer;
+    const { binding, spies } = createImagesBindingMock(resizedBuffer);
+    const runSpy = vi.fn().mockResolvedValue({ response: 'caption' });
+    const aiMock = { run: runSpy } as unknown as Ai;
+    const largeBuffer = new Uint8Array(2 * 1024 * 1024).buffer;
+
+    const caption = await internals.generateImageAltText(aiMock, binding, largeBuffer);
+
+    expect(caption).toBe('caption');
+    expect(spies.inputSpy).toHaveBeenCalledTimes(1);
+    const payload = runSpy.mock.calls[0][1];
+    expect(payload.image).toEqual(Array.from(new Uint8Array(resizedBuffer)));
+  });
+
+  it('skips resizing when binding is unavailable and uses original buffer', async () => {
+    const runSpy = vi.fn().mockResolvedValue({ response: 'small' });
+    const aiMock = { run: runSpy } as unknown as Ai;
+    const smallBuffer = new Uint8Array(16).buffer;
+
+    const caption = await internals.generateImageAltText(aiMock, undefined, smallBuffer);
+
+    expect(caption).toBe('small');
+    const payload = runSpy.mock.calls[0][1];
+    expect(payload.image).toEqual(Array.from(new Uint8Array(smallBuffer)));
+  });
+
+  it('falls back to the original buffer if resizing fails', async () => {
+    const failingImages = {
+      input: vi.fn(() => {
+        throw new Error('boom');
+      }),
+    } as unknown as Bindings['IMAGES'];
+
+    const largeBuffer = new Uint8Array(2 * 1024 * 1024).buffer;
+    const resized = await internals.resizeImageForAI(failingImages, largeBuffer);
+
+    expect(resized).toBe(largeBuffer);
   });
 });

@@ -51,7 +51,8 @@
     "ALLOWED_ORIGINS": "https://goncalo2k.pt/",
     "AUTH_ROUTES": "",
     "ENABLE_AUTH": false,
-    "LOG_LEVEL": "debug"
+    "LOG_LEVEL": "debug",
+    "MAX_UPLOAD_SIZE_MB": 20
   },
   /**
 	 * Service Bindings (communicate between multiple Workers)
@@ -65,6 +66,9 @@
       "remote": true
     }
   ],
+  "images": {
+    "binding": "IMAGES",
+  },
   "ai": {
     "binding": "AI"
   }

@@ -5,7 +5,9 @@ import type { Image } from "../models/image";
 import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/image-requests";
 import type { DeleteResponse, ImageAuditLogsResponse, ImageListResponse, UploadResponse } from "../models/image-responses";
 import type { ImageMapper } from "../utils/image-mapper";
-import { isValidImageName } from "../utils/utils";
+import { bufferToStream, isValidImageName, parseErrorMessage } from "../utils/utils";
+
+const BYTES_PER_MB = 1024 * 1024;
 
 export class ImageService {
     constructor(private mapperService: ImageMapper) { }
@@ -57,18 +59,20 @@ export class ImageService {
         let isBlobUploaded = false;
         try {
             if (!(body.file instanceof File)) {
-                throw Error('No file was uploaded');
+                return { errorMessage: 'No file was uploaded', status: 400 };
             }
 
-            if (body.file.size >= 5 * 1024 * 1024) {
-                throw Error('The uploaded file is too big - try files under 5mb');
+            const maxUploadSizeBytes = c.env.MAX_UPLOAD_SIZE_MB * BYTES_PER_MB;
+            if (body.file.size >= maxUploadSizeBytes) {
+                const maxSizeMb = Math.max(1, Math.round(maxUploadSizeBytes / (1024 * 1024)));
+                return { errorMessage: `The uploaded file is too big - try files under ${maxSizeMb}mb`, status: 400 };
             }
 
             const preferredName = body.name;
             const fallbackName = body.file.name;
             const imageNameSource = preferredName ?? fallbackName;
             if (!imageNameSource || !isValidImageName(imageNameSource)) {
-                throw Error('Invalid file name format');
+                return { errorMessage: 'Invalid file name format', status: 400 };
             }
             imageName = imageNameSource;
 
@@ -86,7 +90,7 @@ export class ImageService {
 
             const descriptionPromise = body.description
                 ? Promise.resolve(body.description)
-                : this.generateImageAltText(c.env.AI, fileBuffer);
+                : this.generateImageAltText(c.env.AI, c.env.IMAGES, fileBuffer);
 
             const [uploadResult, descriptionResult] = await Promise.allSettled([
                 uploadPromise,
@@ -139,8 +143,12 @@ export class ImageService {
     }
 
     async uploadExternalImage(c: AppContext, body: ImageUploadUrlRequest): Promise<UploadResponse> {
-        const file = await this.fetchExternalImage(body);
-        return await this.uploadImage(c, this.mapperService.mapImageUploadUrlRequestToImageUploadFileRequest(body, file));
+        try {
+            const file = await this.fetchExternalImage(body);
+            return await this.uploadImage(c, this.mapperService.mapImageUploadUrlRequestToImageUploadFileRequest(body, file));
+        } catch (error: unknown) {
+            return { errorMessage: parseErrorMessage(error), status: 400 };
+        }
     }
 
     async getImagesAuditLogs(c: AppContext): Promise<ImageAuditLogsResponse> {
@@ -310,9 +318,12 @@ export class ImageService {
         return Number.isNaN(parsed) ? 0 : parsed;
     }
 
-    private async generateImageAltText(AI_WORKER: Ai, fileBuffer: ArrayBuffer): Promise<string> {
+
+    private async generateImageAltText(AI_WORKER: Ai, IMAGES: ImagesBinding, fileBuffer: ArrayBuffer): Promise<string> {
+        const resizedBuffer = await this.resizeImageForAI(IMAGES, fileBuffer);
+
         const input = {
-            image: [...new Uint8Array(fileBuffer)],
+            image: [...new Uint8Array(resizedBuffer)],
             prompt: "Generate a caption for this image",
             max_tokens: 256,
         };
@@ -322,10 +333,31 @@ export class ImageService {
             input
         );
 
-        if (!response) {
+        const description = (response as { description?: string })?.description
+            ?? (response as { response?: string })?.response;
+        if (!description) {
             throw Error("Image generation didn't return a valid value");
         }
 
-        return response.description;
+        return description;
+    }
+
+    private async resizeImageForAI(IMAGES: ImagesBinding, fileBuffer: ArrayBuffer): Promise<ArrayBuffer> {
+        if (fileBuffer.byteLength <= BYTES_PER_MB) {
+            return fileBuffer;
+        }
+
+        try {
+            const stream = bufferToStream(fileBuffer);
+            const resized = await IMAGES
+                .input(stream)
+                .transform({ width: 1024, height: 1024, fit: "scale-down" })
+                .output({ format: "image/jpeg", quality: 80 });
+
+            return await resized.response().arrayBuffer();
+        } catch (error) {
+            console.warn('Image resizing for AI failed, falling back to original buffer', error);
+            return fileBuffer;
+        }
     }
 }

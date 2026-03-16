@@ -1,122 +1,142 @@
 # Image Gallery API
 
-A modern image gallery API built with Cloudflare Workers, Hono framework, R2 blob storage and D1 database.
+Serverless image management API built on Cloudflare Workers. Metadata lands in D1, binaries live in R2, and descriptive alt text is generated on the fly through the Cloudflare AI binding.
 
-## Features
+## Highlights
 
-- 🖼️ Image upload and management
-- ⚡ Fast performance with Cloudflare Workers
-- 🛡️ Secure authentication and authorization
-- 🔄 Database integration with Cloudflare D1
-- 🔄 Blob storage integration with Cloudflare R2
-- 📊 API documentation with Swagger/OpenAPI
-- 🧪 Comprehensive error handling
+- **Cloudflare-native stack** – Workers runtime with bindings for R2 (`ANALOGS_BUCKET`), D1 (`ANALOGS_METADATA_DB`), and AI (`AI`).
+- **Secure ingestion** – Configurable auth middleware validates custom client headers, while CORS and strict CSP headers protect every response.
+- **Multiple upload flows** – Accepts multipart file uploads or fetches remote images directly from a trusted URL.
+- **AI-powered accessibility** – Generates alt text whenever none is provided so downstream consumers always get a useful description.
+- **Audit + metrics** – `/images/audit` exposes paginated recent uploads plus aggregate counts to monitor storage usage.
+- **OpenAPI-first** – `src/docs/openapi.ts` defines the schema; `/openapi.json` serves it and `/docs` renders Swagger UI (with runtime-aware host detection).
+- **Strict file-name validation** – All routes use the same regex guard (letters/numbers/spaces/`_-` plus an optional extension) to prevent traversal or odd characters.
+- **Observability** – Structured logs with correlation IDs, CSP, and header-level tracing help debug production requests quickly.
+- **Tests close to the code** – Vitest specs sit alongside modules (`*.spec.ts`), covering middleware, controllers, and services.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- npm or pnpm
-- Cloudflare account
-- Wrangler CLI installed globally (`pnpm install -g wrangler`)
+- Node.js 18+ (Workers dev server requires modern runtime)
+- [pnpm](https://pnpm.io) (recommended) or npm
+- Cloudflare account with Workers / D1 / R2 access
+- Wrangler CLI (`pnpm install -g wrangler`)
 
-### Installation
+### Install & Configure
 
 ```bash
 pnpm install
+cp .dev.vars.example .dev.vars   # update values for your environment
+pnpm run setup-local-db          # optional: apply schema.sql to local D1
+pnpm run dev                     # start wrangler dev server
 ```
 
-### Development
+The API will be available at `http://localhost:8787`.
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-3. Start the development server:
-   ```bash
-   pnpm run dev
-   ```
-4. The API will be available at `http://localhost:8787`
+### Common Scripts
 
-### Database Setup
+| Command | Description |
+| --- | --- |
+| `pnpm run dev` | Run the worker locally via Wrangler. |
+| `pnpm run setup-local-db` / `pnpm run deploy-db` | Execute `schema.sql` against local or remote D1. |
+| `pnpm run cf-typegen` | Regenerate TypeScript bindings for Wrangler environments. |
+| `pnpm run test` | Execute Vitest suites. |
+| `pnpm run lint` / `pnpm run lint:fix` | ESLint (Workers-aware configuration). |
+| `pnpm run deploy` | Deploy to Cloudflare Workers (uses `wrangler deploy`). |
 
-#### Local Development
-```bash
-pnpm run setup-local-db
-```
+## API Documentation
 
-#### Production Deployment
-```bash
-pnpm run deploy-db
-```
+Swagger UI and the OpenAPI schema ship with the worker:
 
-### Deployment
+- `GET /docs` – Interactive docs powered by `@hono/swagger-ui`.
+- `GET /openapi.json` – OpenAPI 3.1 document generated from `src/docs/openapi.ts` (servers list is patched with the current host at runtime).
 
-To deploy to Cloudflare Workers:
-```bash
-pnpm run deploy
-```
+## Image Naming Rules
 
-### Type Generation
+- Allowed characters: lowercase letters (`a-z`), digits (`0-9`), spaces, underscores, and dashes.
+- Optional single extension suffix (e.g., `sunrise.png`).
+- Path separators and traversal strings (e.g., `../secret.png`) are rejected.
+- Files must exist and be under 5 MB; uploads exceeding the limit or missing the `file` part receive a `400 Bad Request`.
 
-To generate TypeScript types based on your Worker configuration:
-```bash
-pnpm run cf-typegen
-```
+The validation is enforced when reading, uploading, or importing by URL. Invalid names result in `400 Bad Request`.
 
-### API Documentation
+## Middleware & Flow
 
-Swagger UI and the OpenAPI schema are bundled with the worker:
+1. **Logging** (`logger-middleware.ts`) – assigns/propagates correlation IDs and logs both request + response with duration.
+2. **CORS** (`cors.middleware.ts`) – builds rules from `ALLOWED_ORIGINS`, `CLIENT_ID_HEADER`, and `CLIENT_SECRET_HEADER`.
+3. **Auth** (`auth.middleware.ts`) – validates client headers for any path listed in `AUTH_ROUTES` (health/docs/openapi remain public).
+4. **Security headers** (`security-headers.middleware.ts`) – CSP, Referrer-Policy, `nosniff` (relaxed CSP for `/docs`).
 
-- `GET /docs` renders the interactive Swagger UI.
-- `GET /openapi.json` returns the raw OpenAPI document if you want to import it elsewhere.
+After middleware, incoming requests flow to the image router (`src/routes/image.routes.ts`), controller (`ImageController`), and service (`ImageService`).
 
 ## Project Structure
 
 ```
 image-gallery/
 ├── src/
-│   ├── app.ts          # Main application entry point
-│   ├── routes/         # API route handlers
-│   ├── middleware/     # Custom middleware (Auth, Logging, Cors and Misc. Security Checks)
-│   ├── services/       # Business logic and DB/Blob Storage Interaction
-│   ├── controllers/    # Recieves the requests for their specific routes and orchestrates service calls
-│   └── types/          # Type definitions (API requests and responses, Internal Objects)
-├── schema.sql          # Database schema (used with D1)
-├── wrangler.jsonc      # Wrangler configuration
-└── package.json        # Project dependencies and scripts
+│   ├── app.ts                # Worker entrypoint & middleware wiring
+│   ├── routes/               # Hono routers
+│   ├── controllers/          # HTTP orchestration, caching, responses
+│   ├── services/             # Business logic (R2/D1/AI access)
+│   ├── middleware/           # logging, auth, cors, security headers
+│   ├── utils/                # shared helpers (image mapper, logger, etc.)
+│   ├── models/               # Request/response contracts
+│   └── docs/                 # OpenAPI spec + helper
+├── schema.sql                # D1 schema
+├── wrangler.jsonc            # Worker + binding configuration
+├── package.json / pnpm-lock  # Scripts & dependencies
+└── .dev.vars.example         # Example Worker env vars
 ```
 
-## API Endpoints
+## REST Endpoints
 
-### General
-- `GET /docs` - Retrieve API documentation
-- `GET /` - Health check
-### Images
-- `GET /audit` - Retrieve 
-- `GET /images` - Retrieve all images
-- `GET /images/:id` - Retrieve a specific image by name
-- `POST /images` - Upload a new image from a file
-- `POST /images/external` - Upload a new image from an external URL
-- `PUT /images/:id` - Update an existing image
-- `DELETE /images/:id` - Delete an image
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/` | Health payload. |
+| GET | `/docs` | Swagger UI (no auth). |
+| GET | `/openapi.json` | OpenAPI document (no auth). |
+| GET | `/images` | Paginated metadata list (`offset`, `limit`). |
+| GET | `/images/audit` | Audit logs + aggregate stats. |
+| GET | `/images/:name` | Stream an image by validated name and expose an alt-text header. |
+| POST | `/images` | Multipart upload (validates size, name, description). |
+| POST | `/images/external` | Accepts `fileUrl` & optional metadata, fetches and stores the remote image. |
+| DELETE | `/images/:name` | Remove image blob + metadata. |
+
+> Use the `AUTH_ROUTES` env var to protect specific routes (comma-separated list). Requests must then include the configured `CLIENT_ID_HEADER` and `CLIENT_SECRET_HEADER` values matching `CLIENT_ID`/`CLIENT_SECRET`.
 
 ## Environment Variables
 
-Create a `.dev.vars` file in the root directory with the following variables:
+Copy `.dev.vars.example` and fill in the required values:
 
-```bash
-```
-## License
+| Variable | Description |
+| --- | --- |
+| `ALT_HEADER_NAME` | Name of the response header that carries alt-text (default `x-image-alt-desc`). |
+| `CLIENT_ID_HEADER` / `CLIENT_SECRET_HEADER` | Header names that carry auth credentials. |
+| `CLIENT_ID` / `CLIENT_SECRET` | Credential pair enforced by the auth middleware. |
+| `ALLOWED_ORIGINS` | CSV list of allowed origins for CORS (supports `*`). |
+| `AUTH_ROUTES` | CSV list of paths that require auth. Leave blank to secure everything except health/docs/openapi. |
+| `ENABLE_AUTH` | Set to `true`/`false` to toggle auth globally. |
+| `LOG_LEVEL` | Pino log level (`debug`, `info`, `warn`, etc.). |
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Cloudflare bindings are declared in `wrangler.jsonc`:
 
-## Acknowledgments
+- `ANALOGS_BUCKET` (R2) – stores the binary files.
+- `ANALOGS_METADATA_DB` (D1) – persists `name`, `description`, `content_type`, `created_at`.
+- `AI` – Cloudflare AI binding used to generate descriptive text.
 
-- Built with [Cloudflare Workers](https://workers.cloudflare.com/)
-- Powered by [Hono](https://hono.dev/)
-- Database powered by [Cloudflare D1](https://developers.cloudflare.com/d1/)
-- Blob storage powered by [Cloudflare R2](https://developers.cloudflare.com/r2/)
-- API documentation generated with [Hono OpenAPI](https://github.com/honojs/hono-openapi)
+## Testing & Quality
+
+- **Unit tests** – `pnpm run test` executes Vitest suites placed next to their source files.
+- **Linting** – `pnpm run lint` runs ESLint with the Worker-aware config (`eslint.config.cjs`).
+- **Type safety** – TypeScript 5.9 is enforced through the lint step and `tsconfig.json`.
+
+## Deployment
+
+- `pnpm run deploy` wraps `wrangler deploy --minify`.
+- Ensure your Cloudflare account has the required D1, R2, and AI bindings configured as per `wrangler.jsonc`.
+
+## License & Credits
+
+- MIT License – see [LICENSE](LICENSE).
+- Built with [Cloudflare Workers](https://workers.cloudflare.com/), [Hono](https://hono.dev/), [Cloudflare D1](https://developers.cloudflare.com/d1/), [Cloudflare R2](https://developers.cloudflare.com/r2/), and [Hono OpenAPI](https://github.com/honojs/hono-openapi).

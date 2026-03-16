@@ -13,3 +13,15 @@ export function isValidImageName(name: string | undefined | null): boolean {
     }
     return IMAGE_NAME_REGEX.test(name);
 }
+
+export function parseErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
+export function bufferToStream(buffer: ArrayBuffer): ReadableStream<Uint8Array> {
+    const stream = new Response(buffer).body;
+    if (!stream) {
+        throw Error('Unable to convert buffer to stream');
+    }
+    return stream as ReadableStream<Uint8Array>;
+}
