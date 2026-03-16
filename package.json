@@ -8,7 +8,8 @@
     "setup-local-db": "npx wrangler d1 execute analogs-db --local --file=./schema.sql",
     "deploy-db": "npx wrangler d1 execute analogs-db --remote --file=./schema.sql",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hono/eslint-config": "^2.1.0",
@@ -26,7 +27,7 @@
     "zod": "^4.3.6"
   },
   "version": "1.0.0",
-  "description": "A modern image gallery API built with Cloudflare Workers, Hono framework, and D1 database.",
+  "description": "A modern image gallery API built with Cloudflare Workers, Hono framework, R2 blob storage and D1 database.",
   "main": "index.js",
   "repository": {
     "type": "git",
@@ -40,6 +41,8 @@
   },
   "homepage": "https://github.com/goncalo2k/image-gallery#readme",
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "@faker-js/faker": "^10.3.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }
