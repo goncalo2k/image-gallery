@@ -29,7 +29,7 @@ export class ImageService {
     }
 
     async getImageByName(ANALOGS_BUCKET: R2Bucket, ANALOGS_METADATA_DB: D1Database, name: string): Promise<Image | undefined> {
-        const pattern = /^[A-Za-z0-9 _-]+(\.[a-z]+)?$/;
+        const pattern = /^[a-z0-9 _-]+(\.[a-z]+)?$/i;
 
         if (!pattern.test(name)) {
             throw new Error("Invalid file name format");
