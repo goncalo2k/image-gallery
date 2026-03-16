@@ -4,7 +4,7 @@ const ts = require('typescript-eslint');
 
 module.exports = [
   {
-    ignores: ['node_modules/', 'dist/', 'wrangler.jsonc', '.wrangler/**', 'eslint.config.cjs'],
+    ignores: ['node_modules/', 'dist/', 'wrangler.jsonc', '.wrangler/**', 'eslint.config.cjs', 'scripts/**'],
   },
   js.configs.recommended,
   ...hono,

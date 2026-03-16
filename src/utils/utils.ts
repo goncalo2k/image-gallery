@@ -1,3 +1,5 @@
+import type { AppContext } from "../app";
+
 const IMAGE_NAME_REGEX = /^[a-z0-9 _-]+(\.[a-z]+)?$/i;
 
 export function parseCsv(value: string): string[] {
@@ -24,4 +26,15 @@ export function bufferToStream(buffer: ArrayBuffer): ReadableStream<Uint8Array> 
         throw Error('Unable to convert buffer to stream');
     }
     return stream as ReadableStream<Uint8Array>;
+}
+
+export function getPaginationParams(c: AppContext, defaultLimit = 20, maxLimit = 100): { offset: number, limit: number } {
+    const offsetParam = Number.parseInt(c.req.query('offset') ?? '0', 10);
+    const limitParam = Number.parseInt(c.req.query('limit') ?? String(defaultLimit), 10);
+
+    const offset = Number.isNaN(offsetParam) || offsetParam < 0 ? 0 : offsetParam;
+    const sanitizedLimit = Number.isNaN(limitParam) || limitParam <= 0 ? defaultLimit : limitParam;
+    const limit = Math.min(sanitizedLimit, maxLimit);
+
+    return { offset, limit };
 }

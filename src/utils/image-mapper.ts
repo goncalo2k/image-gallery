@@ -3,6 +3,14 @@ import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/im
 
 export class ImageMapper {
 
+    mapRowToPartialImage(row: Record<string, unknown>): Partial<Image> {
+        return {
+            name: row.name,
+            description: row.description,
+            contentType: row.content_typ,
+            createdAt: row.created_at,
+        } as Partial<Image>
+    }
     mapFormDataToImageUploadFileRequest(formData: FormData): ImageUploadFileRequest {
         return {
             name: formData.get('name'),

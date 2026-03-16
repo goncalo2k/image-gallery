@@ -5,7 +5,7 @@ import type { Image } from "../models/image";
 import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/image-requests";
 import type { DeleteResponse, ImageAuditLogsResponse, ImageListResponse, UploadResponse } from "../models/image-responses";
 import type { ImageMapper } from "../utils/image-mapper";
-import { bufferToStream, isValidImageName, parseErrorMessage } from "../utils/utils";
+import { bufferToStream, getPaginationParams, isValidImageName, parseErrorMessage } from "../utils/utils";
 
 const BYTES_PER_MB = 1024 * 1024;
 
@@ -13,10 +13,15 @@ export class ImageService {
     constructor(private mapperService: ImageMapper) { }
 
     async getImagesMetadata(c: AppContext): Promise<ImageListResponse> {
-        const { offset, limit } = this.getPaginationParams(c);
+        const { offset, limit } = getPaginationParams(c);
 
         const countResponse = await c.env.ANALOGS_METADATA_DB.prepare('SELECT COUNT(*) as total FROM images').first();
-        const total = this.getAggregateCount(countResponse);
+
+        const total = Number(countResponse?.total);
+
+        if (!total) {
+            throw Error("Couldn't get total number of images uploaded.");
+        }
 
         const response = await c.env.ANALOGS_METADATA_DB.prepare(
             'SELECT name, description, content_type, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
@@ -26,7 +31,7 @@ export class ImageService {
             throw Error('Failed to fetch images from D1');
         }
 
-        const results: Partial<Image>[] = response.results.map((row) => this.mapRowToImageSummary(row));
+        const results: Partial<Image>[] = response.results.map((row) => this.mapperService.mapRowToPartialImage(row));
 
         return { data: results, count: results.length, offset, limit, total };
     }
@@ -152,7 +157,7 @@ export class ImageService {
     }
 
     async getImagesAuditLogs(c: AppContext): Promise<ImageAuditLogsResponse> {
-        const { offset, limit } = this.getPaginationParams(c);
+        const { offset, limit } = getPaginationParams(c);
 
         const metadataPromise = c.env.ANALOGS_METADATA_DB.prepare(
             'SELECT name, description, content_type, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
@@ -172,9 +177,16 @@ export class ImageService {
             throw Error("Couldn't list all metadata entries from D1");
         }
 
-        const total = this.getAggregateCount(countResult.value);
+        if (!countResult.value?.total) {
+            throw Error("Couldn't get total number of images uploaded.");
+        }
 
-        const recentUploads: Partial<Image>[] = metadataResult.value.results.map((row) => this.mapRowToImageSummary(row));
+        const total = Number(countResult.value?.total);
+        if (!total) {
+            throw Error("Couldn't get total number of images uploaded.");
+        }
+
+        const recentUploads: Partial<Image>[] = metadataResult.value.results.map((row) => this.mapperService.mapRowToPartialImage(row));
 
         return {
             data: {
@@ -191,7 +203,6 @@ export class ImageService {
         };
     }
 
-    //TODO: Add auth
     async deleteImage(c: AppContext, name: string): Promise<DeleteResponse> {
         const [blobResult, metadataResult] = await Promise.allSettled([
             this.deleteImageBlob(c.env.ANALOGS_BUCKET, name),
@@ -271,53 +282,6 @@ export class ImageService {
     private async deleteImageBlob(ANALOGS_BUCKET: R2Bucket, name: string): Promise<void> {
         await ANALOGS_BUCKET.delete(name);
     }
-
-    private mapRowToImageSummary(row: Record<string, unknown>): Partial<Image> {
-        const mapValue = (value: unknown): string | undefined => {
-            if (typeof value === 'string') {
-                return value;
-            }
-            if (typeof value === 'number') {
-                return value.toString();
-            }
-            if (value instanceof Date) {
-                return value.toISOString();
-            }
-            return undefined;
-        };
-
-        return {
-            name: mapValue(row.name),
-            description: mapValue(row.description),
-            contentType: mapValue(row.content_type),
-            createdAt: mapValue(row.created_at),
-        };
-    }
-
-    private getPaginationParams(c: AppContext, defaultLimit = 20, maxLimit = 100): { offset: number, limit: number } {
-        const offsetParam = Number.parseInt(c.req.query('offset') ?? '0', 10);
-        const limitParam = Number.parseInt(c.req.query('limit') ?? String(defaultLimit), 10);
-
-        const offset = Number.isNaN(offsetParam) || offsetParam < 0 ? 0 : offsetParam;
-        const sanitizedLimit = Number.isNaN(limitParam) || limitParam <= 0 ? defaultLimit : limitParam;
-        const limit = Math.min(sanitizedLimit, maxLimit);
-
-        return { offset, limit };
-    }
-
-    private getAggregateCount(row: Record<string, unknown> | null, key = 'total'): number {
-        if (!row) {
-            return 0;
-        }
-        const value = row[key];
-        if (typeof value === 'number') {
-            return value;
-        }
-
-        const parsed = Number(value);
-        return Number.isNaN(parsed) ? 0 : parsed;
-    }
-
 
     private async generateImageAltText(AI_WORKER: Ai, IMAGES: ImagesBinding, fileBuffer: ArrayBuffer): Promise<string> {
         const resizedBuffer = await this.resizeImageForAI(IMAGES, fileBuffer);

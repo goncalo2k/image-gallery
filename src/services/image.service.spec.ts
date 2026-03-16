@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { faker } from '@faker-js/faker';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { AppContext, Bindings } from '../app';
 import type { ImageUploadFileRequest } from '../models/image-requests';
 import { ImageMapper } from '../utils/image-mapper';
@@ -24,23 +24,44 @@ const createMockContext = (options: { query?: QueryParams; db: D1Database }): Ap
   } as unknown as AppContext;
 };
 
-const createDatabaseMock = (rows: Record<string, unknown>[], total = rows.length): D1Database => {
+interface DatabaseMockOptions {
+  total?: unknown;
+  metadataRejects?: boolean;
+  countRejects?: boolean;
+  metadataResults?: { results?: Record<string, unknown>[] } | null;
+}
+
+const createDatabaseMock = (rows: Record<string, unknown>[], options?: DatabaseMockOptions): D1Database => {
+  const hasCustomTotal = options ? Object.prototype.hasOwnProperty.call(options, 'total') : false;
+  const totalValue = hasCustomTotal ? options?.total : rows.length;
+
+  const runResult = (options?.metadataResults ?? { results: rows }) as { results?: Record<string, unknown>[] };
+  const metadataRunMock = options?.metadataRejects
+    ? vi.fn().mockRejectedValue(new Error('metadata failed'))
+    : vi.fn().mockResolvedValue(runResult);
+
+  const metadataStatement = {
+    bind: vi.fn(() => ({
+      run: metadataRunMock,
+    })),
+    run: metadataRunMock,
+  } as unknown as D1PreparedStatement;
+
+  const countStatement = options?.countRejects
+    ? ({
+        first: vi.fn().mockRejectedValue(new Error('count failed')),
+      } as unknown as D1PreparedStatement)
+    : ({
+        first: vi.fn().mockResolvedValue({ total: totalValue }),
+      } as unknown as D1PreparedStatement);
+
   return {
     prepare: vi.fn((sql: string) => {
       if (sql.toLowerCase().includes('count')) {
-        return {
-          first: vi.fn().mockResolvedValue({ total }),
-        } as unknown as D1PreparedStatement;
+        return countStatement;
       }
 
-      const runResult = { results: rows };
-
-      return {
-        bind: vi.fn(() => ({
-          run: vi.fn().mockResolvedValue(runResult),
-        })),
-        run: vi.fn().mockResolvedValue(runResult),
-      } as unknown as D1PreparedStatement;
+      return metadataStatement;
     }),
   } as unknown as D1Database;
 };
@@ -75,6 +96,10 @@ const createImagesBindingMock = (resizedBuffer: ArrayBuffer) => {
   };
 };
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('ImageService.getImagesMetadata', () => {
   it('returns metadata with pagination info', async () => {
     const row = {
@@ -84,30 +109,31 @@ describe('ImageService.getImagesMetadata', () => {
       created_at: faker.date.recent().toISOString(),
     };
     const total = faker.number.int({ min: 10, max: 50 });
-    const db = createDatabaseMock([row], total);
+    const db = createDatabaseMock([row], { total });
     const ctx = createMockContext({ query: { offset: '5', limit: '10' }, db });
     const service = new ImageService(mapper);
+    const mappedRow = {
+      name: row.name,
+      description: 'mapped-description',
+      contentType: 'mapped/type',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    const mapperSpy = vi.spyOn(mapper, 'mapRowToPartialImage').mockReturnValue(mappedRow);
 
     const response = await service.getImagesMetadata(ctx);
 
     expect(response).toEqual({
-      data: [
-        {
-          name: row.name,
-          description: row.description,
-          contentType: row.content_type,
-          createdAt: row.created_at,
-        },
-      ],
+      data: [mappedRow],
       count: 1,
       offset: 5,
       limit: 10,
       total,
     });
+    expect(mapperSpy).toHaveBeenCalledWith(row);
   });
 
   it('defaults pagination when params are invalid', async () => {
-    const db = createDatabaseMock([]);
+    const db = createDatabaseMock([], { total: 1 });
     const ctx = createMockContext({ query: { offset: '-10', limit: '-1' }, db });
     const service = new ImageService(mapper);
 
@@ -115,6 +141,22 @@ describe('ImageService.getImagesMetadata', () => {
 
     expect(response.offset).toBe(0);
     expect(response.limit).toBe(20); // default limit
+  });
+
+  it('throws when metadata total is missing', async () => {
+    const db = createDatabaseMock([], { total: undefined });
+    const ctx = createMockContext({ db });
+    const service = new ImageService(mapper);
+
+    await expect(service.getImagesMetadata(ctx)).rejects.toThrow("Couldn't get total number of images uploaded.");
+  });
+
+  it('throws when metadata total resolves to zero', async () => {
+    const db = createDatabaseMock([], { total: 0 });
+    const ctx = createMockContext({ db });
+    const service = new ImageService(mapper);
+
+    await expect(service.getImagesMetadata(ctx)).rejects.toThrow("Couldn't get total number of images uploaded.");
   });
 });
 
@@ -127,9 +169,15 @@ describe('ImageService.getImagesAuditLogs', () => {
       created_at: faker.date.recent().toISOString(),
     }));
     const totalImages = faker.number.int({ min: 20, max: 80 });
-    const db = createDatabaseMock(rows, totalImages);
+    const db = createDatabaseMock(rows, { total: totalImages });
     const ctx = createMockContext({ query: { offset: '0', limit: '200' }, db });
     const service = new ImageService(mapper);
+    const mapperSpy = vi.spyOn(mapper, 'mapRowToPartialImage').mockImplementation((row) => ({
+      name: row.name as string,
+      description: row.description as string,
+      contentType: (row as { content_type: string }).content_type,
+      createdAt: (row as { created_at: string }).created_at,
+    }));
 
     const response = await service.getImagesAuditLogs(ctx);
 
@@ -156,6 +204,43 @@ describe('ImageService.getImagesAuditLogs', () => {
     expect(response.count).toBe(2);
     expect(response.limit).toBe(100); // max limit clamp
     expect(response.total).toBe(totalImages);
+    expect(mapperSpy).toHaveBeenCalledTimes(rows.length);
+  });
+
+  it('throws when metadata query fails', async () => {
+    const rows = [{ name: 'broken' }];
+    const db = createDatabaseMock(rows, { metadataRejects: true });
+    const ctx = createMockContext({ db });
+    const service = new ImageService(mapper);
+
+    await expect(service.getImagesAuditLogs(ctx)).rejects.toThrow("Couldn't list all metadata entries from D1");
+  });
+
+  it('throws when metadata query resolves without results', async () => {
+    const rows = [{ name: 'missing-results' }];
+    const db = createDatabaseMock(rows, { metadataResults: { results: undefined } });
+    const ctx = createMockContext({ db });
+    const service = new ImageService(mapper);
+
+    await expect(service.getImagesAuditLogs(ctx)).rejects.toThrow("Couldn't list all metadata entries from D1");
+  });
+
+  it('throws when count query fails', async () => {
+    const rows = [{ name: 'count-failure' }];
+    const db = createDatabaseMock(rows, { countRejects: true });
+    const ctx = createMockContext({ db });
+    const service = new ImageService(mapper);
+
+    await expect(service.getImagesAuditLogs(ctx)).rejects.toThrow("Couldn't get number of images stored in D1");
+  });
+
+  it('throws when total images cannot be determined', async () => {
+    const rows = [{ name: 'no-total' }];
+    const db = createDatabaseMock(rows, { total: undefined });
+    const ctx = createMockContext({ db });
+    const service = new ImageService(mapper);
+
+    await expect(service.getImagesAuditLogs(ctx)).rejects.toThrow("Couldn't get total number of images uploaded.");
   });
 });
 
