@@ -22,18 +22,8 @@ export function requestLogger(c: AppContext): Logger {
         method: c.req.method,
       };
     },
-    transport: level === 'debug'
-      ? undefined
-      : {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname',
-        },
-      },
     redact: {
-      paths: ['req.headers.authorization', 'req.headers.cookie'],
+      paths: ['req.headers.authorization', 'req.headers.cookie', 'req.headers.CF-Access-Client-Id', 'req.headers.CF-Access-Client-Secret'],
       censor: '**REDACTED**',
     },
   });
