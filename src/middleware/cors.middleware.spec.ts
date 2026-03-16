@@ -1,8 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */    
+/* eslint-disable @typescript-eslint/no-unsafe-call */    
+
 import { faker } from '@faker-js/faker';
-import { corsMiddleware } from './cors.middleware';
+import type { cors } from 'hono/cors';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AppContext } from '../app';
-import { cors } from 'hono/cors';
+import { corsMiddleware } from './cors.middleware';
 
 const handlerSpy = vi.fn();
 let capturedConfig: Parameters<typeof cors>[0] | undefined;
@@ -22,9 +25,14 @@ const createContext = (overrides?: Partial<AppContext['env']>): AppContext => {
     ...(overrides ?? {}),
   } as AppContext['env'];
 
-  return {
+  const ctx: AppContext = {
+    req: {} as AppContext['req'],
+    res: {} as AppContext['res'],
     env,
+    json: (() => Response.json({})) as unknown as AppContext['json'],
   } as AppContext;
+
+  return ctx;
 };
 
 describe('corsMiddleware', () => {

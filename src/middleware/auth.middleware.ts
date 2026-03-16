@@ -9,13 +9,15 @@ export function pathMatches(requestPath: string, protectedPath: string): boolean
     return requestPath === protectedPath || requestPath.startsWith(`${protectedPath}/`)
 }
 
+const PUBLIC_PATHS = ['/', '/health', '/docs', '/openapi.json'];
+
 export function shouldRequireAuth(c: AppContext): boolean {
     const authEnabled = c.env.ENABLE_AUTH;
     if (!authEnabled) { return false; }
 
     const protectedEndpoints = parseCsv(c.env.AUTH_ROUTES);
 
-    if (pathMatches(c.req.path, '/') || pathMatches(c.req.path, '/health')) {
+    if (PUBLIC_PATHS.some((publicPath) => pathMatches(c.req.path, publicPath))) {
         return false;
     }
 

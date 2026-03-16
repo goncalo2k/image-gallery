@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { faker } from '@faker-js/faker';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AppContext } from '../app';
 import { loggingMiddleware } from './logger-middleware';
 
@@ -16,24 +16,36 @@ vi.mock('uuid', () => ({ v4: uuidMock }));
 const createContext = (options?: { correlationHeader?: string; method?: string; path?: string }) => {
   const headersStore = new Map<string, string>();
   const variables = new Map<string, string>();
-  const ctx = {
-    req: {
-      header: vi.fn().mockImplementation((key: string) => (key === 'X-Correlation-Id' ? options?.correlationHeader : undefined)),
-      method: options?.method ?? 'GET',
-      path: options?.path ?? faker.internet.url(),
-    },
-    res: {
-      headers: headersStore,
-      status: 200,
-    },
-    set: vi.fn((key: string, value: string) => {
-      variables.set(key, value);
-    }),
-    get: vi.fn((key: string) => variables.get(key)),
-    executionCtx: { waitUntil: vi.fn() },
-  } as unknown as AppContext;
+  const headerMock = vi.fn().mockImplementation((key: string) => (key === 'X-Correlation-Id' ? options?.correlationHeader : undefined));
+  const setMock = vi.fn((key: string, value: string) => {
+    variables.set(key, value);
+  });
+  const getMock = vi.fn((key: string) => variables.get(key));
+  const req = {
+    header: headerMock,
+    method: options?.method ?? 'GET',
+    path: options?.path ?? faker.internet.url(),
+  } as AppContext['req'];
+  const res = {
+    headers: headersStore,
+    status: 200,
+  } as AppContext['res'];
 
-  return { ctx, headersStore, variables };
+  const ctx: AppContext = {
+    req,
+    res,
+    env: {} as AppContext['env'],
+    set: setMock as AppContext['set'],
+    get: getMock as AppContext['get'],
+    executionCtx: {
+      waitUntil: vi.fn((promise: Promise<unknown>) => {
+        promise.catch(() => undefined);
+      }),
+    } as AppContext['executionCtx'],
+    json: (() => Response.json({})) as AppContext['json'],
+  } as AppContext;
+
+  return { ctx, headersStore, variables, headerMock };
 };
 
 describe('loggingMiddleware', () => {
@@ -46,13 +58,13 @@ describe('loggingMiddleware', () => {
 
   it('uses existing correlation id and logs request lifecycle', async () => {
     const correlationId = faker.string.uuid();
-    const { ctx, headersStore, variables } = createContext({ correlationHeader: correlationId });
+    const { ctx, headersStore, variables, headerMock } = createContext({ correlationHeader: correlationId });
     const next = vi.fn();
     const dateSpy = vi.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(1020);
 
     await loggingMiddleware()(ctx, next);
 
-    expect(ctx.req.header).toHaveBeenCalledWith('X-Correlation-Id');
+    expect(headerMock).toHaveBeenCalledWith('X-Correlation-Id');
     expect(headersStore.get('X-Correlation-Id')).toBe(correlationId);
     expect(variables.get('correlationId')).toBe(correlationId);
     expect(requestLoggerMock).toHaveBeenCalledWith(ctx);

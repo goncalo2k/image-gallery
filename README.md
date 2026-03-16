@@ -66,6 +66,13 @@ To generate TypeScript types based on your Worker configuration:
 pnpm run cf-typegen
 ```
 
+### API Documentation
+
+Swagger UI and the OpenAPI schema are bundled with the worker:
+
+- `GET /docs` renders the interactive Swagger UI.
+- `GET /openapi.json` returns the raw OpenAPI document if you want to import it elsewhere.
+
 ## Project Structure
 
 ```

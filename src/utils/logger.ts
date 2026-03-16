@@ -8,7 +8,7 @@ import type { AppContext } from '../app';
  * each log entry on a single line without manual merging.
  */
 export function requestLogger(c: AppContext): Logger {
-  const level = (c.env.LOG_LEVEL ?? 'info') as string;
+  const level = c.env.LOG_LEVEL;
 
   return pino({
     level,

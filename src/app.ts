@@ -1,6 +1,8 @@
+import { swaggerUI } from '@hono/swagger-ui';
 import type { Context} from 'hono';
 import { Hono } from 'hono'
 import type pino from 'pino';
+import { buildRuntimeOpenApiSpec } from './docs/openapi';
 import { authMiddleware } from './middleware/auth.middleware';
 import { corsMiddleware } from './middleware/cors.middleware';
 import { loggingMiddleware } from './middleware/logger-middleware';
@@ -40,6 +42,8 @@ app.use('*', corsMiddleware);
 app.use('*', authMiddleware);
 app.use('*', securityHeadersMiddleware());
 
+app.get('/openapi.json', (c) => c.json(buildRuntimeOpenApiSpec(c)));
+app.get('/docs', swaggerUI({ url: '/openapi.json', title: 'Image Gallery API Docs' }));
 
 app.route('/images', imageRoutes);
 

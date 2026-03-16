@@ -1,10 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
+import { faker } from '@faker-js/faker';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import type { Mock } from 'vitest';
-import { faker } from '@faker-js/faker';
-import { ImageController } from './image.controller';
+import type { AppContext } from '../app';
 import type { ImageService } from '../services/image.service';
 import type { ImageMapper } from '../utils/image-mapper';
-import type { AppContext } from '../app';
+import { ImageController } from './image.controller';
+
+type WorkerExecutionContext = NonNullable<AppContext['executionCtx']>;
 
 const loggerErrorSpy = vi.fn();
 vi.mock('../utils/logger', () => ({
@@ -13,41 +17,49 @@ vi.mock('../utils/logger', () => ({
 
 const cachePutSpy = vi.fn();
 beforeAll(() => {
-  (globalThis as any).caches = {
+  (globalThis as unknown as { caches: CacheStorage }).caches = {
     default: {
       put: cachePutSpy,
-    },
-  };
+    } as unknown as Cache,
+  } as unknown as CacheStorage;
 });
 
-const createServiceMock = () => ({
-  getImagesAuditLogs: vi.fn(),
-  getImagesMetadata: vi.fn(),
-  getImageByName: vi.fn(),
-  uploadImage: vi.fn(),
-  uploadExternalImage: vi.fn(),
-  deleteImage: vi.fn(),
-}) as unknown as ImageService;
+const createServiceMock = () => {
+  const mocks = {
+    getImagesAuditLogs: vi.fn(),
+    getImagesMetadata: vi.fn(),
+    getImageByName: vi.fn(),
+    uploadImage: vi.fn(),
+    uploadExternalImage: vi.fn(),
+    deleteImage: vi.fn(),
+  } satisfies Record<string, Mock>;
 
-const createMapperMock = () => ({
-  mapFormDataToImageUploadFileRequest: vi.fn(),
-  mapFormDataToImageUploadUrlRequest: vi.fn(),
-  mapImageUploadUrlRequestToImageUploadFileRequest: vi.fn(),
-}) as unknown as ImageMapper;
+  return { service: mocks as unknown as ImageService, mocks };
+};
+
+const createMapperMock = () => {
+  const mocks = {
+    mapFormDataToImageUploadFileRequest: vi.fn(),
+    mapFormDataToImageUploadUrlRequest: vi.fn(),
+    mapImageUploadUrlRequestToImageUploadFileRequest: vi.fn(),
+  } satisfies Record<string, Mock>;
+
+  return { mapper: mocks as unknown as ImageMapper, mocks };
+};
 
 const createContext = (overrides?: Partial<AppContext>) => {
-  const jsonSpy = vi.fn((body: unknown, status = 200) => ({ body, status } as unknown as Response));
+  const jsonSpy = vi.fn((body: unknown, status = 200) => ({ body, status }));
   const baseReq = {
     path: faker.internet.url(),
     method: faker.internet.httpMethod(),
     param: vi.fn(),
     formData: vi.fn(),
     header: vi.fn(),
-  } as any;
+  };
   const baseRes = {
     status: 200,
     headers: new Map<string, string>(),
-  } as any;
+  };
   const baseEnv = {
     ANALOGS_BUCKET: {} as R2Bucket,
     ANALOGS_METADATA_DB: {} as D1Database,
@@ -63,12 +75,32 @@ const createContext = (overrides?: Partial<AppContext>) => {
     LOG_LEVEL: 'info',
   } as AppContext['env'];
 
+  const req = { ...baseReq } as unknown as AppContext['req'];
+  if (overrides?.req) {
+    Object.assign(req, overrides.req);
+  }
+
+  const res = { ...baseRes } as unknown as AppContext['res'];
+  if (overrides?.res) {
+    Object.assign(res, overrides.res);
+  }
+
+  const env = { ...baseEnv, ...(overrides?.env ?? {}) } as AppContext['env'];
+
   const ctx: AppContext = {
-    ...(overrides ?? {}),
-    req: { ...baseReq, ...(overrides?.req ?? {}) },
-    res: { ...baseRes, ...(overrides?.res ?? {}) },
-    env: { ...baseEnv, ...(overrides?.env ?? {}) },
-    executionCtx: overrides?.executionCtx ?? { waitUntil: vi.fn(), passThroughOnException: vi.fn(), props: {} },
+    req,
+    res,
+    env,
+    executionCtx:
+      overrides?.executionCtx ??
+      ({
+        waitUntil: vi.fn((promise: Promise<unknown>) => {
+          promise.catch(() => undefined);
+          return undefined;
+        }),
+        passThroughOnException: vi.fn(),
+        props: {},
+      } as WorkerExecutionContext),
     json: overrides?.json ?? (jsonSpy as unknown as AppContext['json']),
     set: overrides?.set ?? vi.fn(),
     get: overrides?.get ?? vi.fn(),
@@ -84,26 +116,26 @@ describe('ImageController', () => {
   });
 
   it('returns audit logs from service', async () => {
-    const service = createServiceMock();
-    const mapper = createMapperMock();
+    const { service, mocks: serviceMocks } = createServiceMock();
+    const { mapper, mocks: _mapperMocks } = createMapperMock();
     const controller = new ImageController(service, mapper);
     const { ctx, jsonSpy } = createContext();
     const auditData = { recentUploads: [], statistics: { totalImages: 0, lastUpdated: new Date().toISOString() } };
-    (service.getImagesAuditLogs as unknown as Mock).mockResolvedValue(auditData);
+    (serviceMocks.getImagesAuditLogs as Mock).mockResolvedValue(auditData);
 
     const response = await controller.getImagesAudit(ctx);
 
-    expect(service.getImagesAuditLogs).toHaveBeenCalledWith(ctx);
+    expect(serviceMocks.getImagesAuditLogs).toHaveBeenCalledWith(ctx);
     expect(jsonSpy).toHaveBeenCalledWith({ data: auditData });
     expect(response).toEqual({ body: { data: auditData }, status: 200 });
   });
 
   it('logs error when metadata retrieval fails', async () => {
-    const service = createServiceMock();
-    const mapper = createMapperMock();
+    const { service, mocks: serviceMocks } = createServiceMock();
+    const { mapper } = createMapperMock();
     const controller = new ImageController(service, mapper);
     const { ctx } = createContext();
-    (service.getImagesMetadata as unknown as Mock).mockRejectedValue(new Error('db down'));
+    (serviceMocks.getImagesMetadata as Mock).mockRejectedValue(new Error('db down'));
 
     const result = await controller.getImagesMetada(ctx);
 
@@ -112,31 +144,34 @@ describe('ImageController', () => {
   });
 
   it('returns image response with headers when found', async () => {
-    const service = createServiceMock();
-    const mapper = createMapperMock();
+    const { service, mocks: serviceMocks } = createServiceMock();
+    const { mapper } = createMapperMock();
     const controller = new ImageController(service, mapper);
     const name = faker.string.uuid();
     const { ctx } = createContext({
       req: {
         param: vi.fn().mockImplementation(() => name),
         raw: new Request(`https://example.com/images/${name}`),
-      } as any,
+      } as unknown as AppContext['req'],
       env: {
         ANALOGS_BUCKET: {} as R2Bucket,
         ANALOGS_METADATA_DB: {} as D1Database,
         ALT_HEADER_NAME: 'X-Image-Alt',
-      } as any,
+      } as AppContext['env'],
       executionCtx: {
-        waitUntil: vi.fn((promise: Promise<unknown>) => promise.catch(() => undefined)),
+        waitUntil: vi.fn((promise: Promise<unknown>) => {
+          promise.catch(() => undefined);
+          return undefined;
+        }),
         passThroughOnException: vi.fn(),
         props: {},
-      },
+      } as WorkerExecutionContext,
     });
 
     const description = faker.lorem.sentence();
     const contentType = 'image/png';
     const file = new File([faker.string.binary({ length: 10 })], `${name}.png`, { type: contentType });
-    (service.getImageByName as unknown as Mock).mockResolvedValue({
+    (serviceMocks.getImageByName as Mock).mockResolvedValue({
       name,
       description,
       contentType,
@@ -146,72 +181,72 @@ describe('ImageController', () => {
 
     const response = await controller.getImage(ctx);
 
-    expect(service.getImageByName).toHaveBeenCalled();
-    expect(response?.headers.get('Content-Type')).toBe(contentType);
-    expect(response?.headers.get('X-Image-Alt')).toBe(description);
+    expect(serviceMocks.getImageByName).toHaveBeenCalled();
+    expect(response.headers.get('Content-Type')).toBe(contentType);
+    expect(response.headers.get('X-Image-Alt')).toBe(description);
   });
 
   it('uploads image via mapper and service', async () => {
-    const service = createServiceMock();
-    const mapper = createMapperMock();
+    const { service, mocks: serviceMocks } = createServiceMock();
+    const { mapper, mocks: mapperMocks } = createMapperMock();
     const controller = new ImageController(service, mapper);
     const formData = new FormData();
     const file = new File(['body'], `${faker.string.alphanumeric(6)}.png`, { type: 'image/png' });
     formData.append('file', file);
     const mappedRequest = { file };
-    (mapper.mapFormDataToImageUploadFileRequest as unknown as Mock).mockReturnValue(mappedRequest);
-    (service.uploadImage as unknown as Mock).mockResolvedValue({ data: {}, status: 202 });
+    (mapperMocks.mapFormDataToImageUploadFileRequest as Mock).mockReturnValue(mappedRequest);
+    (serviceMocks.uploadImage as Mock).mockResolvedValue({ data: {}, status: 202 });
 
     const { ctx } = createContext({
       req: {
         formData: vi.fn().mockResolvedValue(formData),
-      } as any,
+      } as unknown as AppContext['req'],
     });
 
     const response = await controller.uploadImage(ctx);
 
-    expect(mapper.mapFormDataToImageUploadFileRequest).toHaveBeenCalledWith(formData);
-    expect(service.uploadImage).toHaveBeenCalledWith(ctx, mappedRequest);
+    expect(mapperMocks.mapFormDataToImageUploadFileRequest).toHaveBeenCalledWith(formData);
+    expect(serviceMocks.uploadImage).toHaveBeenCalledWith(ctx, mappedRequest);
     expect(response).toEqual({ body: { data: {}, status: 202 }, status: 202 });
   });
 
   it('uploads external image by mapping url request', async () => {
-    const service = createServiceMock();
-    const mapper = createMapperMock();
+    const { service, mocks: serviceMocks } = createServiceMock();
+    const { mapper, mocks: mapperMocks } = createMapperMock();
     const controller = new ImageController(service, mapper);
     const formData = new FormData();
     const mappedUrlRequest = { fileUrl: faker.internet.url() };
-    (mapper.mapFormDataToImageUploadUrlRequest as unknown as Mock).mockReturnValue(mappedUrlRequest);
-    (service.uploadExternalImage as unknown as Mock).mockResolvedValue({ data: {}, status: 201 });
+    (mapperMocks.mapFormDataToImageUploadUrlRequest as Mock).mockReturnValue(mappedUrlRequest);
+    (serviceMocks.uploadExternalImage as Mock).mockResolvedValue({ data: {}, status: 201 });
 
     const { ctx } = createContext({
       req: {
         formData: vi.fn().mockResolvedValue(formData),
-      } as any,
+      } as unknown as AppContext['req'],
     });
 
     const response = await controller.uploadExternalSourceImage(ctx);
 
-    expect(mapper.mapFormDataToImageUploadUrlRequest).toHaveBeenCalledWith(formData);
-    expect(service.uploadExternalImage).toHaveBeenCalledWith(ctx, mappedUrlRequest);
+    expect(mapperMocks.mapFormDataToImageUploadUrlRequest).toHaveBeenCalledWith(formData);
+    expect(serviceMocks.uploadExternalImage).toHaveBeenCalledWith(ctx, mappedUrlRequest);
     expect(response.status).toBe(201);
   });
 
   it('returns delete response status from service', async () => {
-    const service = createServiceMock();
-    const mapper = createMapperMock();
+    const { service, mocks: serviceMocks } = createServiceMock();
+    const { mapper } = createMapperMock();
     const controller = new ImageController(service, mapper);
-    (service.deleteImage as unknown as Mock).mockResolvedValue({ status: 204 });
+    (serviceMocks.deleteImage as Mock).mockResolvedValue({ status: 204 });
     const name = faker.string.uuid();
     const { ctx } = createContext({
       req: {
         param: vi.fn().mockReturnValue(name),
-      } as any,
+      } as unknown as AppContext['req'],
     });
 
     const response = await controller.deleteImage(ctx);
 
-    expect(service.deleteImage).toHaveBeenCalledWith(ctx, name);
+    expect(serviceMocks.deleteImage).toHaveBeenCalledWith(ctx, name);
     expect(response).toEqual({ body: undefined, status: 204 });
   });
 });

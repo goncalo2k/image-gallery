@@ -5,6 +5,7 @@ import type { Image } from "../models/image";
 import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/image-requests";
 import type { DeleteResponse, ImageAuditLogsResponse, ImageListResponse, UploadResponse } from "../models/image-responses";
 import type { ImageMapper } from "../utils/image-mapper";
+import { isValidImageName } from "../utils/utils";
 
 export class ImageService {
     constructor(private mapperService: ImageMapper) { }
@@ -23,15 +24,13 @@ export class ImageService {
             throw Error('Failed to fetch images from D1');
         }
 
-        const results: Partial<Image>[] = response.results.map((row) => this.mapRowToImageSummary(row as Record<string, unknown>));
+        const results: Partial<Image>[] = response.results.map((row) => this.mapRowToImageSummary(row));
 
         return { data: results, count: results.length, offset, limit, total };
     }
 
     async getImageByName(ANALOGS_BUCKET: R2Bucket, ANALOGS_METADATA_DB: D1Database, name: string): Promise<Image | undefined> {
-        const pattern = /^[a-z0-9 _-]+(\.[a-z]+)?$/i;
-
-        if (!pattern.test(name)) {
+        if (!isValidImageName(name)) {
             throw new Error("Invalid file name format");
         }
 
@@ -54,7 +53,7 @@ export class ImageService {
     }
 
     async uploadImage(c: AppContext, body: ImageUploadFileRequest): Promise<UploadResponse> {
-        const imageName = body.name ?? body.file.name;
+        let imageName = '';
         let isBlobUploaded = false;
         try {
             if (!(body.file instanceof File)) {
@@ -64,6 +63,14 @@ export class ImageService {
             if (body.file.size >= 5 * 1024 * 1024) {
                 throw Error('The uploaded file is too big - try files under 5mb');
             }
+
+            const preferredName = body.name;
+            const fallbackName = body.file.name;
+            const imageNameSource = preferredName ?? fallbackName;
+            if (!imageNameSource || !isValidImageName(imageNameSource)) {
+                throw Error('Invalid file name format');
+            }
+            imageName = imageNameSource;
 
             const cachedImage = await this.getImageByName(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, imageName);
             if (cachedImage) {
@@ -122,9 +129,11 @@ export class ImageService {
 
             return { data: this.mapperService.mapImageToPartialImage(image) };
         } catch (error: unknown) {
-            await this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch((cleanupError: unknown) => {
-                console.error('Cleanup failed:', cleanupError);
-            });
+            if (imageName) {
+                await this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch((cleanupError: unknown) => {
+                    console.error('Cleanup failed:', cleanupError);
+                });
+            }
             throw error;
         }
     }
@@ -157,7 +166,7 @@ export class ImageService {
 
         const total = this.getAggregateCount(countResult.value);
 
-        const recentUploads: Partial<Image>[] = metadataResult.value.results.map((row) => this.mapRowToImageSummary(row as Record<string, unknown>));
+        const recentUploads: Partial<Image>[] = metadataResult.value.results.map((row) => this.mapRowToImageSummary(row));
 
         return {
             data: {
@@ -208,7 +217,12 @@ export class ImageService {
             throw Error("Remote file's content type is invalid");
         }
 
-        const fileName = request.name ?? crypto.randomUUID();
+        const providedName = request.name;
+        const fallbackName = crypto.randomUUID();
+        const fileName = providedName ?? fallbackName;
+        if (!isValidImageName(fileName)) {
+            throw Error('Invalid file name format');
+        }
         const blob = await response.blob();
 
         return new File([blob], fileName, { type: contentType });

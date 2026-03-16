@@ -1,12 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */ 
+
+import { faker } from '@faker-js/faker';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Buffer } from 'node:buffer';
-import { faker } from '@faker-js/faker';
-import { authMiddleware, pathMatches, shouldRequireAuth } from './auth.middleware';
 import type { AppContext } from '../app';
+import { authMiddleware, pathMatches, shouldRequireAuth } from './auth.middleware';
 
 const globalCrypto = (globalThis as typeof globalThis & { crypto?: Crypto }).crypto;
-if (globalCrypto && typeof globalCrypto.subtle?.timingSafeEqual !== 'function') {
-  Object.defineProperty(globalCrypto.subtle ?? {}, 'timingSafeEqual', {
+const subtle = globalCrypto?.subtle;
+if (subtle && typeof subtle.timingSafeEqual !== 'function') {
+  Object.defineProperty(subtle, 'timingSafeEqual', {
     value: (a: BufferSource, b: BufferSource) => {
       const bufferA = Buffer.from(a as ArrayBufferLike);
       const bufferB = Buffer.from(b as ArrayBufferLike);
@@ -37,19 +40,19 @@ const createContext = (options?: {
   envOverrides?: Partial<typeof baseEnv>;
 }): { ctx: AppContext; jsonSpy: ReturnType<typeof vi.fn> } => {
   const headers = options?.headers ?? {};
-  const jsonSpy = vi.fn((body, status = 200) => ({ body, status } as unknown as Response));
+  const jsonSpy = vi.fn((body, status = 200) => ({ body, status }));
 
-  const ctx = {
+  const ctx: AppContext = {
     req: {
       path: options?.path ?? '/images',
       header: (name: string) => headers[name.toLowerCase()] ?? headers[name],
-    },
+    } as AppContext['req'],
     env: {
       ...baseEnv,
       ...(options?.envOverrides ?? {}),
-    },
-    json: jsonSpy,
-  } as unknown as AppContext;
+    } as AppContext['env'],
+    json: jsonSpy as unknown as AppContext['json'],
+  } as AppContext;
 
   return { ctx, jsonSpy };
 };
@@ -68,6 +71,12 @@ describe('auth.middleware helpers', () => {
 
     const { ctx: rootCtx } = createContext({ path: '/' });
     expect(shouldRequireAuth(rootCtx)).toBe(false);
+
+    const { ctx: docsCtx } = createContext({ path: '/docs' });
+    expect(shouldRequireAuth(docsCtx)).toBe(false);
+
+    const { ctx: schemaCtx } = createContext({ path: '/openapi.json' });
+    expect(shouldRequireAuth(schemaCtx)).toBe(false);
 
     const { ctx: protectedCtx } = createContext({ path: '/images' });
     expect(shouldRequireAuth(protectedCtx)).toBe(true);

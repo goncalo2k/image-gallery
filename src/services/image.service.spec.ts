@@ -1,8 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { faker } from '@faker-js/faker';
-import { ImageService } from './image.service';
-import { ImageMapper } from '../utils/image-mapper';
+import { describe, it, expect, vi } from 'vitest';
 import type { AppContext } from '../app';
+import type { ImageUploadFileRequest } from '../models/image-requests';
+import { ImageMapper } from '../utils/image-mapper';
+import { ImageService } from './image.service';
 
 const mapper = new ImageMapper();
 
@@ -122,5 +124,33 @@ describe('ImageService.getImagesAuditLogs', () => {
     expect(response.count).toBe(2);
     expect(response.limit).toBe(100); // max limit clamp
     expect(response.total).toBe(totalImages);
+  });
+});
+
+describe('ImageService validation', () => {
+  const service = new ImageService(mapper);
+
+  it('rejects invalid names when fetching by name', async () => {
+    await expect(
+      service.getImageByName({} as R2Bucket, {} as D1Database, '../evil')
+    ).rejects.toThrow('Invalid file name format');
+  });
+
+  it('rejects invalid names on upload', async () => {
+    const ctx = {
+      env: {
+        ANALOGS_BUCKET: {} as R2Bucket,
+        ANALOGS_METADATA_DB: {} as D1Database,
+        AI: {} as Ai,
+      },
+      executionCtx: { waitUntil: vi.fn() },
+    } as unknown as AppContext;
+
+    const body = {
+      name: '../invalid',
+      file: new File(['content'], '../invalid', { type: 'image/png' }),
+    } as ImageUploadFileRequest;
+
+    await expect(service.uploadImage(ctx, body)).rejects.toThrow('Invalid file name format');
   });
 });
