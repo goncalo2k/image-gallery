@@ -49,8 +49,8 @@
     "CLIENT_ID_HEADER": "CF-Access-Client-Id",
     "CLIENT_SECRET_HEADER": "CF-Access-Client-Secret",
     "ALLOWED_ORIGINS": "https://goncalo2k.pt/",
-    "AUTH_ROUTES": "",
-    "ENABLE_AUTH": false,
+    "AUTH_ROUTES": "/images/audit",
+    "ENABLE_AUTH": true,
     "LOG_LEVEL": "debug",
     "MAX_UPLOAD_SIZE_MB": 20
   },

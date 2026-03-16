@@ -28,7 +28,7 @@ export class ImageMapper {
     }
 
     mapImageUploadUrlRequestToImageUploadFileRequest(request: ImageUploadUrlRequest, file: File): ImageUploadFileRequest {
-        return { file, name: request.name, description: request.description };
+        return { file, name: request.name ? request.name.toLowerCase() : undefined, description: request.description };
     }
 
     mapImageMetadataToImage(imageRequest: ImageUploadFileRequest, imageName: string, imageDescription: string): Image {

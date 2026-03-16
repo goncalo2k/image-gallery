@@ -143,20 +143,28 @@ describe('ImageService.getImagesMetadata', () => {
     expect(response.limit).toBe(20); // default limit
   });
 
-  it('throws when metadata total is missing', async () => {
+  it('still resolves when metadata total is missing but returns NaN', async () => {
     const db = createDatabaseMock([], { total: undefined });
     const ctx = createMockContext({ db });
     const service = new ImageService(mapper);
 
-    await expect(service.getImagesMetadata(ctx)).rejects.toThrow("Couldn't get total number of images uploaded.");
+    const response = await service.getImagesMetadata(ctx);
+
+    expect(response.count).toBe(0);
+    expect(response.data).toEqual([]);
+    expect(response.total).toBeNaN();
   });
 
-  it('throws when metadata total resolves to zero', async () => {
+  it('allows zero totals and surfaces pagination result', async () => {
     const db = createDatabaseMock([], { total: 0 });
     const ctx = createMockContext({ db });
     const service = new ImageService(mapper);
 
-    await expect(service.getImagesMetadata(ctx)).rejects.toThrow("Couldn't get total number of images uploaded.");
+    const response = await service.getImagesMetadata(ctx);
+
+    expect(response.total).toBe(0);
+    expect(response.count).toBe(0);
+    expect(response.data).toEqual([]);
   });
 });
 
@@ -234,13 +242,18 @@ describe('ImageService.getImagesAuditLogs', () => {
     await expect(service.getImagesAuditLogs(ctx)).rejects.toThrow("Couldn't get number of images stored in D1");
   });
 
-  it('throws when total images cannot be determined', async () => {
+  it('returns NaN total when count rows omit totals', async () => {
     const rows = [{ name: 'no-total' }];
     const db = createDatabaseMock(rows, { total: undefined });
     const ctx = createMockContext({ db });
     const service = new ImageService(mapper);
 
-    await expect(service.getImagesAuditLogs(ctx)).rejects.toThrow("Couldn't get total number of images uploaded.");
+    const response = await service.getImagesAuditLogs(ctx);
+
+    expect(response.count).toBe(1);
+    expect(response.data.recentUploads).toHaveLength(1);
+    expect(response.total).toBeNaN();
+    expect(response.data.statistics.totalImages).toBeNaN();
   });
 });
 

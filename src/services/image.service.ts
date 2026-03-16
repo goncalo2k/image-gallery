@@ -19,10 +19,6 @@ export class ImageService {
 
         const total = Number(countResponse?.total);
 
-        if (!total) {
-            throw Error("Couldn't get total number of images uploaded.");
-        }
-
         const response = await c.env.ANALOGS_METADATA_DB.prepare(
             'SELECT name, description, content_type, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
         ).bind(limit, offset).run();
@@ -41,7 +37,7 @@ export class ImageService {
             throw new Error("Invalid file name format");
         }
 
-        const object = await ANALOGS_BUCKET.get(name);
+        const object = await ANALOGS_BUCKET.get(name.toLowerCase());
 
         if (!object) {
             return undefined;
@@ -79,7 +75,7 @@ export class ImageService {
             if (!imageNameSource || !isValidImageName(imageNameSource)) {
                 return { errorMessage: 'Invalid file name format', status: 400 };
             }
-            imageName = imageNameSource;
+            imageName = imageNameSource.toLowerCase();
 
             const cachedImage = await this.getImageByName(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, imageName);
             if (cachedImage) {
@@ -177,14 +173,11 @@ export class ImageService {
             throw Error("Couldn't list all metadata entries from D1");
         }
 
-        if (!countResult.value?.total) {
+        if (!countResult.value) {
             throw Error("Couldn't get total number of images uploaded.");
         }
 
         const total = Number(countResult.value?.total);
-        if (!total) {
-            throw Error("Couldn't get total number of images uploaded.");
-        }
 
         const recentUploads: Partial<Image>[] = metadataResult.value.results.map((row) => this.mapperService.mapRowToPartialImage(row));
 
@@ -193,7 +186,7 @@ export class ImageService {
                 recentUploads,
                 statistics: {
                     totalImages: total,
-                    lastUpdated: new Date().toISOString()
+                    lastUpdated: recentUploads.length > 0 ? recentUploads[0].createdAt : undefined
                 }
             },
             count: recentUploads.length,
@@ -205,8 +198,8 @@ export class ImageService {
 
     async deleteImage(c: AppContext, name: string): Promise<DeleteResponse> {
         const [blobResult, metadataResult] = await Promise.allSettled([
-            this.deleteImageBlob(c.env.ANALOGS_BUCKET, name),
-            this.deleteImageMetadata(c.env.ANALOGS_METADATA_DB, name)
+            this.deleteImageBlob(c.env.ANALOGS_BUCKET, name.toLowerCase()),
+            this.deleteImageMetadata(c.env.ANALOGS_METADATA_DB, name.toLowerCase())
         ])
 
         return { status: blobResult.status === 'fulfilled' && metadataResult.status === 'fulfilled' && metadataResult.value.meta.changed_db && metadataResult.value.success ? 200 : 500 }
