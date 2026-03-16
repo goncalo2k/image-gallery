@@ -3,38 +3,38 @@ import pino from 'pino';
 import type { AppContext } from '../app';
 
 /**
- * Returns a logger scoped to the current request (path + method) and
- * extracts the correlation ID from the Hono context (set by middleware).
+ * Returns a request-scoped logger that automatically injects
+ * correlationId/path/method via pino's mixin hook, keeping
+ * each log entry on a single line without manual merging.
  */
 export function requestLogger(c: AppContext): Logger {
+  const level = (c.env.LOG_LEVEL ?? 'info') as string;
 
-  const level: string = c.env.LOG_LEVEL as string;
-  const baseLogger = pino(
-    {
-      level,
-      base: {
-        hostname: 'cloudflare-worker',
-      },
-      transport: level === 'debug'
-        ? undefined
-        : {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
-          },
-        },
-      redact: {
-        paths: ['req.headers.authorization', 'req.headers.cookie'],
-        censor: '**REDACTED**',
-      },
+  return pino({
+    level,
+    base: {
+      hostname: 'cloudflare-worker',
     },
-  );
-  const cid = c.get('correlationId') || 'unknown';
-  return baseLogger.child({
-    correlationId: cid,
-    path: c.req.path,
-    method: c.req.method
+    mixin() {
+      return {
+        correlationId: c.get('correlationId') || 'unknown',
+        path: c.req.path,
+        method: c.req.method,
+      };
+    },
+    transport: level === 'debug'
+      ? undefined
+      : {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'SYS:standard',
+          ignore: 'pid,hostname',
+        },
+      },
+    redact: {
+      paths: ['req.headers.authorization', 'req.headers.cookie'],
+      censor: '**REDACTED**',
+    },
   });
 }

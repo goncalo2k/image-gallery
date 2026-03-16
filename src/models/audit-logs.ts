@@ -1,11 +1,11 @@
+import type { Image } from "./image";
+
 export interface ImageAuditLogs {
-    images: Image[];
+    recentUploads: Partial<Image>[];
     statistics: Statistics;
 };
 
 export interface Statistics {
     totalImages: number;
-    totalObjectsInR2: number;
-    totalStorageBytes: number;
     lastUpdated: string;
 }

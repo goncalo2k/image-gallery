@@ -28,6 +28,7 @@ export function shouldRequireAuth(c: AppContext): boolean {
 
 export async function authMiddleware(c: AppContext, next: Next): Promise<Response | void> {
     if (!shouldRequireAuth(c)) {
+
         return next();
     }
 
@@ -38,10 +39,13 @@ export async function authMiddleware(c: AppContext, next: Next): Promise<Respons
     const clientSecret = c.req.header(clientSecretHeader);
 
     const encoder = new TextEncoder();
+    if (!clientId || !clientSecret) {
+        return c.json({ errorMessage: 'Unauthorized' }, 401);
+    }
     const isAuthorized =
         crypto.subtle.timingSafeEqual(encoder.encode(clientId), encoder.encode(c.env.CLIENT_ID)) &&
         crypto.subtle.timingSafeEqual(encoder.encode(clientSecret), encoder.encode(c.env.CLIENT_SECRET))
-        
+
     if (!isAuthorized) {
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }

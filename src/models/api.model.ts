@@ -5,4 +5,8 @@ export interface ApiResponse<T> {
     count?: number; //used only when T is a list
     errorMessage?: string;
     status?: ContentfulStatusCode;
+    // Pagination fields
+    offset?: number;
+    limit?: number;
+    total?: number;
 }
