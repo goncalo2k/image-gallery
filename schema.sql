@@ -1,9 +1,14 @@
 DROP TABLE IF EXISTS Images;
 
+DROP INDEX IF EXISTS NameIndex;
+
 CREATE TABLE
   IF NOT EXISTS Images (
-    name TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
     description TEXT NOT NULL,
     content_type TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+
+CREATE INDEX IF NOT EXISTS NameIndex ON Images (name);

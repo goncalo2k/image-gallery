@@ -10,8 +10,8 @@ const imageController = new ImageController(new ImageService(mapperService), map
 
 imageRoutes.get('/audit', (c) => imageController.getImagesAudit(c))
 imageRoutes.post('/external', (c) => imageController.uploadExternalSourceImage(c))
-imageRoutes.get('/:name', (c) => imageController.getImage(c))
-imageRoutes.delete('/:name', (c) => imageController.deleteImage(c))
+imageRoutes.get('/:id', (c) => imageController.getImage(c))
+imageRoutes.delete('/:id', (c) => imageController.deleteImage(c))
 imageRoutes.get('/', (c) => imageController.getImagesMetada(c))
 imageRoutes.post('/', (c) => imageController.uploadImage(c))
 

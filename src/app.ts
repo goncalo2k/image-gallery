@@ -1,5 +1,5 @@
 import { swaggerUI } from '@hono/swagger-ui';
-import type { Context} from 'hono';
+import type { Context } from 'hono';
 import { Hono } from 'hono'
 import type pino from 'pino';
 import { buildRuntimeOpenApiSpec } from './docs/openapi';
@@ -49,7 +49,7 @@ app.get('/docs', swaggerUI({ url: '/openapi.json', title: 'Image Gallery API Doc
 
 app.route('/images', imageRoutes);
 
-app.get('/', (c) => {
+app.get('/health', (c) => {
   return c.json({
     message: 'service healthy',
     timestamp: new Date().toISOString()

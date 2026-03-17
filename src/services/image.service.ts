@@ -20,7 +20,7 @@ export class ImageService {
         const total = Number(countResponse?.total);
 
         const response = await c.env.ANALOGS_METADATA_DB.prepare(
-            'SELECT name, description, content_type, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
+            'SELECT id, name, description, content_type, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
         ).bind(limit, offset).run();
 
         if (!response.results) {
@@ -32,30 +32,28 @@ export class ImageService {
         return { data: results, count: results.length, offset, limit, total };
     }
 
-    async getImageByName(ANALOGS_BUCKET: R2Bucket, ANALOGS_METADATA_DB: D1Database, name: string): Promise<Image | undefined> {
-        if (!isValidImageName(name)) {
-            throw new Error("Invalid file name format");
-        }
-
-        const object = await ANALOGS_BUCKET.get(name.toLowerCase());
+    async getImageById(ANALOGS_BUCKET: R2Bucket, ANALOGS_METADATA_DB: D1Database, id: string): Promise<Image | undefined> {
+        const object = await ANALOGS_BUCKET.get(id);
 
         if (!object) {
             return undefined;
         }
 
-        const descriptionResult = await ANALOGS_METADATA_DB.prepare('SELECT description, created_at FROM images WHERE name = ? LIMIT 1').bind(name).first();
-        const createdAt = descriptionResult?.created_at as string;
-        const description = descriptionResult?.description as string;
+        const metadataResult = await ANALOGS_METADATA_DB.prepare('SELECT name, description, created_at FROM images WHERE id = ? LIMIT 1').bind(id).first();
+        const createdAt = metadataResult?.created_at as string;
+        const description = metadataResult?.description as string;
+        const name = metadataResult?.name as string;
         if (!description || !createdAt) {
             return undefined;
         }
 
         const contentType = object.httpMetadata?.contentType;
         const file = new File([await object.blob()], name, { type: contentType });
-        return { file: file, description, name, contentType, createdAt } as Image;
+        return { id, file: file, description, name, contentType, createdAt } as Image;
     }
 
     async uploadImage(c: AppContext, body: ImageUploadFileRequest): Promise<UploadResponse> {
+        const id = crypto.randomUUID();
         let imageName = '';
         let isBlobUploaded = false;
         try {
@@ -77,14 +75,16 @@ export class ImageService {
             }
             imageName = imageNameSource.toLowerCase();
 
-            const cachedImage = await this.getImageByName(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, imageName);
-            if (cachedImage) {
-                return { data: this.mapperService.mapImageToPartialImage(cachedImage), status: 302 };
+            const cachedImageMetadata = await this.getImageMetadataByName(c.env.ANALOGS_METADATA_DB, imageName);
+
+            if (cachedImageMetadata) {
+                return { data: cachedImageMetadata, status: 200 };
             }
+
             const fileBuffer = await body.file.arrayBuffer();
             const uploadPromise = this.uploadImageBlob(
                 c.env.ANALOGS_BUCKET,
-                imageName,
+                id,
                 body.file,
                 fileBuffer
             );
@@ -109,14 +109,14 @@ export class ImageService {
             isBlobUploaded = uploadResult.value;
             const finalDescription = descriptionResult.value;
 
-            const image = this.mapperService.mapImageMetadataToImage(body, imageName, finalDescription);
+            const image = this.mapperService.mapImageMetadataToImage(body, imageName, id, finalDescription);
             c.executionCtx.waitUntil(
                 this.uploadImageMetadata(c.env.ANALOGS_METADATA_DB, image)
                     .then(result => {
                         if (!result) {
                             // Clean up blob if metadata upload fails
                             if (isBlobUploaded) {
-                                this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch((cleanupError: unknown) => {
+                                this.deleteImageBlob(c.env.ANALOGS_BUCKET, id).catch((cleanupError: unknown) => {
                                     console.error('Cleanup failed:', cleanupError);
                                 });
                             }
@@ -125,17 +125,17 @@ export class ImageService {
                     .catch((error: unknown) => {
                         console.error('Background metadata upload failed:', error);
                         if (isBlobUploaded) {
-                            this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch((cleanupError: unknown) => {
+                            this.deleteImageBlob(c.env.ANALOGS_BUCKET, id).catch((cleanupError: unknown) => {
                                 console.error('Cleanup failed:', cleanupError);
                             });
                         }
                     })
             );
 
-            return { data: this.mapperService.mapImageToPartialImage(image) };
+            return { data: this.mapperService.mapImageToPartialImage(image), status: 202 };
         } catch (error: unknown) {
             if (imageName) {
-                await this.deleteImageBlob(c.env.ANALOGS_BUCKET, imageName).catch((cleanupError: unknown) => {
+                await this.deleteImageBlob(c.env.ANALOGS_BUCKET, id).catch((cleanupError: unknown) => {
                     console.error('Cleanup failed:', cleanupError);
                 });
             }
@@ -156,7 +156,7 @@ export class ImageService {
         const { offset, limit } = getPaginationParams(c);
 
         const metadataPromise = c.env.ANALOGS_METADATA_DB.prepare(
-            'SELECT name, description, content_type, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
+            'SELECT id, name, description, content_type, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
         ).bind(limit, offset).run();
 
         const countPromise = c.env.ANALOGS_METADATA_DB.prepare(
@@ -196,13 +196,29 @@ export class ImageService {
         };
     }
 
-    async deleteImage(c: AppContext, name: string): Promise<DeleteResponse> {
+    async deleteImage(c: AppContext, id: string): Promise<DeleteResponse> {
         const [blobResult, metadataResult] = await Promise.allSettled([
-            this.deleteImageBlob(c.env.ANALOGS_BUCKET, name.toLowerCase()),
-            this.deleteImageMetadata(c.env.ANALOGS_METADATA_DB, name.toLowerCase())
+            this.deleteImageBlob(c.env.ANALOGS_BUCKET, id),
+            this.deleteImageMetadata(c.env.ANALOGS_METADATA_DB, id)
         ])
 
         return { status: blobResult.status === 'fulfilled' && metadataResult.status === 'fulfilled' && metadataResult.value.meta.changed_db && metadataResult.value.success ? 200 : 500 }
+    }
+
+    private async getImageMetadataByName(ANALOGS_METADATA_DB: D1Database, name: string): Promise<Partial<Image> | undefined> {
+        if (!isValidImageName(name)) {
+            throw new Error("Invalid file name format");
+        }
+
+        const descriptionResult = await ANALOGS_METADATA_DB.prepare('SELECT id, description, created_at FROM images WHERE name = ? LIMIT 1').bind(name).first();
+        const createdAt = descriptionResult?.created_at as string;
+        const description = descriptionResult?.description as string;
+        const id = descriptionResult?.id as string;
+        if (!description || !createdAt) {
+            return undefined;
+        }
+
+        return { /* file: file, */ description, name/* , contentType */, createdAt, id } as Image;
     }
 
     private async fetchExternalImage(request: ImageUploadUrlRequest): Promise<File> {
@@ -241,8 +257,8 @@ export class ImageService {
     }
 
     private async uploadImageMetadata(ANALOGS_METADATA_DB: D1Database, image: Image): Promise<boolean> {
-        const result = await ANALOGS_METADATA_DB.prepare("INSERT INTO images (name, description, content_type) VALUES (?, ?, ?)")
-            .bind(image.name, image.description, image.contentType)
+        const result = await ANALOGS_METADATA_DB.prepare("INSERT INTO images (id, name, description, content_type) VALUES (?, ?, ?, ?)")
+            .bind(image.id, image.name, image.description, image.contentType)
             .run();
         if (!result.success || result.meta.rows_written === 0) {
             throw Error('Insert query to D1 failed');
@@ -250,12 +266,12 @@ export class ImageService {
         return true;
     }
 
-    private async uploadImageBlob(ANALOGS_BUCKET: R2Bucket, name: string, file: File, fileBuffer: ArrayBuffer): Promise<boolean> {
+    private async uploadImageBlob(ANALOGS_BUCKET: R2Bucket, id: string, file: File, fileBuffer: ArrayBuffer): Promise<boolean> {
         if (!file.type.includes('image')) {
             throw Error("Uploaded file not of type 'image'");
         }
 
-        const object = await ANALOGS_BUCKET.put(name, fileBuffer, {
+        const object = await ANALOGS_BUCKET.put(id, fileBuffer, {
             httpMetadata: {
                 contentType: file.type,
             },
@@ -268,12 +284,12 @@ export class ImageService {
         return true;
     }
 
-    private async deleteImageMetadata(ANALOGS_METADATA_DB: D1Database, name: string): Promise<D1Result> {
-        return await ANALOGS_METADATA_DB.prepare("DELETE FROM images WHERE name = ?").bind(name).run();
+    private async deleteImageMetadata(ANALOGS_METADATA_DB: D1Database, id: string): Promise<D1Result> {
+        return await ANALOGS_METADATA_DB.prepare("DELETE FROM images WHERE id = ?").bind(id).run();
     }
 
-    private async deleteImageBlob(ANALOGS_BUCKET: R2Bucket, name: string): Promise<void> {
-        await ANALOGS_BUCKET.delete(name);
+    private async deleteImageBlob(ANALOGS_BUCKET: R2Bucket, id: string): Promise<void> {
+        await ANALOGS_BUCKET.delete(id);
     }
 
     private async generateImageAltText(AI_WORKER: Ai, IMAGES: ImagesBinding, fileBuffer: ArrayBuffer): Promise<string> {

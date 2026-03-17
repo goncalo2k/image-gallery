@@ -32,14 +32,14 @@ export class ImageController {
     }
 
     async getImage(c: AppContext): Promise<Response> {
-        const name = String(c.req.param('name'));
+        const id = String(c.req.param('id'));
         try {
-            const image = await this.imageService.getImageByName(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, name);
+            const image = await this.imageService.getImageById(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, id);
             if (!image) {
-                return c.json({ errorMessage: `Image ${name} not found` }, 404);
+                return c.json({ errorMessage: `Image with ${id} not found` }, 404);
             }
             if (!image.description || !image.contentType) {
-                return c.json({ errorMessage: `Image ${name} not found` }, 404);
+                return c.json({ errorMessage: `Image with ${id} not found` }, 404);
             }
 
             const headerName = c.env.ALT_HEADER_NAME;
@@ -48,7 +48,7 @@ export class ImageController {
                     'Content-Type': image.contentType,
                     [headerName]: image.description,
                     'Cache-Control': 'public, max-age=31536000, immutable',
-                    'ETag': `"${name}-${image.createdAt}"`,
+                    'ETag': `"${id}-${image.createdAt}"`,
                     'Accept-Ranges': 'bytes'
                 },
             });
@@ -66,10 +66,11 @@ export class ImageController {
         } catch (error: unknown) {
             const logger = requestLogger(c);
             const errorMessage = parseErrorMessage(error);
-            logger.error(`Failed to get image named ${name}: ${errorMessage}`);
+            logger.error(`Failed to get image with ${id}: ${errorMessage}`);
             return c.json({ errorMessage: 'Failed to get image.' }, 500)
         }
     }
+
     async uploadImage(c: AppContext): Promise<Response> {
         try {
             const formData = await c.req.formData();
@@ -101,16 +102,16 @@ export class ImageController {
     }
 
     async deleteImage(c: AppContext): Promise<Response> {
-        const name = String(c.req.param('name'));
+        const id = String(c.req.param('id'));
         try {
-            const deletedResponse = await this.imageService.deleteImage(c, name);
+            const deletedResponse = await this.imageService.deleteImage(c, id);
             if (deletedResponse.status === 500) { throw Error(`Couldn't delete image.`); }
             return c.json(undefined, deletedResponse.status);
         }
         catch (error: unknown) {
             const logger = requestLogger(c);
             const errorMessage = parseErrorMessage(error);
-            logger.error(`Failed to delete image named ${name}: ${errorMessage}`);
+            logger.error(`Failed to delete image with ${id}: ${errorMessage}`);
             return c.json({ errorMessage: 'Failed to delete image.' }, 500)
         }
     }

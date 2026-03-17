@@ -5,6 +5,7 @@ export class ImageMapper {
 
     mapRowToPartialImage(row: Record<string, unknown>): Partial<Image> {
         return {
+            id: row.id,
             name: row.name,
             description: row.description,
             contentType: row.content_typ,
@@ -31,8 +32,9 @@ export class ImageMapper {
         return { file, name: request.name ? request.name.toLowerCase() : undefined, description: request.description };
     }
 
-    mapImageMetadataToImage(imageRequest: ImageUploadFileRequest, imageName: string, imageDescription: string): Image {
+    mapImageMetadataToImage(imageRequest: ImageUploadFileRequest, imageName: string, id: string, imageDescription: string): Image {
         return {
+            id,
             name: imageName,
             description: imageDescription,
             contentType: imageRequest.file.type,
@@ -42,7 +44,7 @@ export class ImageMapper {
 
     mapImageToPartialImage(image: Image): Partial<Image> {
         return {
-            name: image.name, description: image.description, contentType: image.contentType, createdAt: image.createdAt
+            id: image.id, name: image.name, description: image.description, contentType: image.contentType, createdAt: image.createdAt
         } as Partial<Image>;
     }
 }
