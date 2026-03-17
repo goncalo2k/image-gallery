@@ -2,6 +2,10 @@ import type { AppContext } from "../app";
 
 const IMAGE_NAME_REGEX = /^[a-z0-9 _-]+(\.[a-z]+)?$/i;
 
+export const BYTES_PER_MB = 1024 * 1024;
+export const ALLOWED_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml', 'image/avif'] as const;
+export const ALLOWED_IMAGE_MIME_SET = new Set<string>(ALLOWED_IMAGE_MIME_TYPES);
+
 export function parseCsv(value: string): string[] {
     return value
         .split(',')
@@ -37,4 +41,25 @@ export function getPaginationParams(c: AppContext, defaultLimit = 20, maxLimit =
     const limit = Math.min(sanitizedLimit, maxLimit);
 
     return { offset, limit };
+}
+
+export function normalizeContentType(contentType: string | null | undefined): string | undefined {
+    if (!contentType) {
+        return undefined;
+    }
+
+    const [type] = contentType.split(';');
+    return type.trim().toLowerCase();
+}
+
+export function isAllowedImageContentType(contentType: string | null | undefined): contentType is string {
+    if (!contentType) {
+        return false;
+    }
+
+    return ALLOWED_IMAGE_MIME_SET.has(contentType.toLowerCase());
+}
+
+export function allowedImageMimeTypesList(): string {
+    return ALLOWED_IMAGE_MIME_TYPES.join(', ');
 }

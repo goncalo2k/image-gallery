@@ -5,9 +5,9 @@ import type { Image } from "../models/image";
 import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/image-requests";
 import type { DeleteResponse, ImageAuditLogsResponse, ImageListResponse, UploadResponse } from "../models/image-responses";
 import type { ImageMapper } from "../utils/image-mapper";
-import { bufferToStream, getPaginationParams, isValidImageName, parseErrorMessage } from "../utils/utils";
+import { allowedImageMimeTypesList, bufferToStream, BYTES_PER_MB, getPaginationParams, isAllowedImageContentType, isValidImageName, normalizeContentType, parseErrorMessage } from "../utils/utils";
 
-const BYTES_PER_MB = 1024 * 1024;
+
 
 export class ImageService {
     constructor(private mapperService: ImageMapper) { }
@@ -75,6 +75,14 @@ export class ImageService {
             }
             imageName = imageNameSource.toLowerCase();
 
+            const normalizedContentType = normalizeContentType(body.file.type);
+            if (!normalizedContentType || !isAllowedImageContentType(normalizedContentType)) {
+                return {
+                    errorMessage: `Unsupported image MIME type. Allowed types: ${allowedImageMimeTypesList()}`,
+                    status: 400
+                };
+            }
+
             const cachedImageMetadata = await this.getImageMetadataByName(c.env.ANALOGS_METADATA_DB, imageName);
 
             if (cachedImageMetadata) {
@@ -85,8 +93,8 @@ export class ImageService {
             const uploadPromise = this.uploadImageBlob(
                 c.env.ANALOGS_BUCKET,
                 id,
-                body.file,
-                fileBuffer
+                fileBuffer,
+                normalizedContentType
             );
 
             const descriptionPromise = body.description
@@ -109,7 +117,10 @@ export class ImageService {
             isBlobUploaded = uploadResult.value;
             const finalDescription = descriptionResult.value;
 
-            const image = this.mapperService.mapImageMetadataToImage(body, imageName, id, finalDescription);
+            const image = {
+                ...this.mapperService.mapImageMetadataToImage(body, imageName, id, finalDescription),
+                contentType: normalizedContentType
+            };
             c.executionCtx.waitUntil(
                 this.uploadImageMetadata(c.env.ANALOGS_METADATA_DB, image)
                     .then(result => {
@@ -251,10 +262,10 @@ export class ImageService {
         if (!response.ok) {
             throw Error("Couldn't fetch file from remote origin");
         }
-        const contentType = response.headers.get('content-type');
+        const normalizedContentType = normalizeContentType(response.headers.get('content-type'));
 
-        if (!contentType?.includes('image')) {
-            throw Error("Remote file's content type is invalid");
+        if (!normalizedContentType || !isAllowedImageContentType(normalizedContentType)) {
+            throw Error(`Remote file's content type is invalid. Allowed types: ${allowedImageMimeTypesList()}`);
         }
 
         const providedName = request.name;
@@ -265,7 +276,7 @@ export class ImageService {
         }
         const blob = await response.blob();
 
-        return new File([blob], fileName, { type: contentType });
+        return new File([blob], fileName, { type: normalizedContentType });
     }
 
     private async uploadImageMetadata(ANALOGS_METADATA_DB: D1Database, image: Image): Promise<boolean> {
@@ -278,14 +289,14 @@ export class ImageService {
         return true;
     }
 
-    private async uploadImageBlob(ANALOGS_BUCKET: R2Bucket, id: string, file: File, fileBuffer: ArrayBuffer): Promise<boolean> {
-        if (!file.type.includes('image')) {
-            throw Error("Uploaded file not of type 'image'");
+    private async uploadImageBlob(ANALOGS_BUCKET: R2Bucket, id: string, fileBuffer: ArrayBuffer, contentType: string): Promise<boolean> {
+        if (!isAllowedImageContentType(contentType)) {
+            throw Error(`Uploaded file not of an allowed image type. Allowed types: ${allowedImageMimeTypesList()}`);
         }
 
         const object = await ANALOGS_BUCKET.put(id, fileBuffer, {
             httpMetadata: {
-                contentType: file.type,
+                contentType,
             },
         });
 
