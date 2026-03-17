@@ -145,7 +145,7 @@ export class ImageService {
 
             return { data: this.mapperService.mapImageToPartialImage(image), status: 202 };
         } catch (error: unknown) {
-            if (imageName) {
+            if (isBlobUploaded) {
                 await this.deleteImageBlob(c.env.ANALOGS_BUCKET, id).catch((cleanupError: unknown) => {
                     console.error('Cleanup failed:', cleanupError);
                 });

@@ -57,7 +57,7 @@ export const openApiSpec: OpenAPIObject = {
     },
   ],
   paths: {
-    '/': {
+    '/health': {
       get: {
         tags: ['System'],
         summary: 'Service health',
@@ -122,7 +122,7 @@ export const openApiSpec: OpenAPIObject = {
               schema: {
                 type: 'object',
                 properties: {
-                  file: { type: 'string', format: 'binary', description: 'Image file' },
+                  file: { type: 'string', format: 'binary', description: 'Image file (exactly one file part is accepted)' },
                   name: { type: 'string', description: 'Optional destination file name' },
                   description: { type: 'string', description: 'Optional friendly description' },
                 },
@@ -132,8 +132,16 @@ export const openApiSpec: OpenAPIObject = {
           },
         },
         responses: {
-          '201': {
-            description: 'Upload accepted',
+          '202': {
+            description: 'Upload accepted and metadata queued for persistence',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/UploadResponse' },
+              },
+            },
+          },
+          '200': {
+            description: 'Image already existed, returning cached metadata',
             content: {
               'application/json': {
                 schema: { $ref: '#/components/schemas/UploadResponse' },
@@ -157,7 +165,7 @@ export const openApiSpec: OpenAPIObject = {
               schema: {
                 type: 'object',
                 properties: {
-                  fileUrl: { type: 'string', format: 'uri', description: 'Source image URL' },
+                  fileUrl: { type: 'string', format: 'uri', description: 'Source image URL (must be http/https and publicly reachable)' },
                   name: { type: 'string', description: 'Optional destination file name' },
                   description: { type: 'string', description: 'Optional friendly description' },
                 },
@@ -167,8 +175,16 @@ export const openApiSpec: OpenAPIObject = {
           },
         },
         responses: {
-          '201': {
-            description: 'Upload accepted',
+          '202': {
+            description: 'Upload accepted and metadata queued for persistence',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/UploadResponse' },
+              },
+            },
+          },
+          '200': {
+            description: 'Image already existed, returning cached metadata',
             content: {
               'application/json': {
                 schema: { $ref: '#/components/schemas/UploadResponse' },
@@ -209,18 +225,18 @@ export const openApiSpec: OpenAPIObject = {
         },
       },
     },
-    '/images/{name}': {
+    '/images/{id}': {
       get: {
         tags: ['Images'],
         summary: 'Download an image',
         description: 'Streams the requested image if it exists.',
         parameters: [
           {
-            name: 'name',
+            name: 'id',
             in: 'path',
             required: true,
             schema: { type: 'string' },
-            description: 'Image file name',
+            description: 'Image identifier returned by metadata endpoints',
           },
         ],
         responses: {
@@ -233,6 +249,7 @@ export const openApiSpec: OpenAPIObject = {
             },
           },
           '404': { $ref: '#/components/responses/NotFound' },
+          '500': { $ref: '#/components/responses/ServerError' },
         },
       },
       delete: {
@@ -240,17 +257,23 @@ export const openApiSpec: OpenAPIObject = {
         summary: 'Delete an image',
         parameters: [
           {
-            name: 'name',
+            name: 'id',
             in: 'path',
             required: true,
             schema: { type: 'string' },
           },
         ],
         responses: {
-          '204': {
+          '200': {
             description: 'Image deleted',
+            content: {
+              'application/json': {
+                schema: { type: 'null' },
+              },
+            },
           },
           '404': { $ref: '#/components/responses/NotFound' },
+          '500': { $ref: '#/components/responses/ServerError' },
         },
       },
     },
@@ -272,17 +295,37 @@ export const openApiSpec: OpenAPIObject = {
         security: [],
       },
     },
+    '/docs': {
+      get: {
+        tags: ['System'],
+        summary: 'Swagger UI',
+        description: 'Serves the interactive Swagger UI powered by this OpenAPI document.',
+        responses: {
+          '200': {
+            description: 'HTML documentation page',
+            content: {
+              'text/html': {
+                schema: { type: 'string' },
+              },
+            },
+          },
+        },
+        security: [],
+      },
+    },
   },
   components: {
     schemas: {
       ImageMetadata: {
         type: 'object',
         properties: {
+          id: { type: 'string', example: 'b3f57f5e-6d34-4c52-9bc4-7b4ed0e4aa6a' },
           name: { type: 'string', example: 'sunrise.png' },
           description: { type: 'string' },
           contentType: { type: 'string', example: 'image/png' },
           createdAt: { type: 'string', format: 'date-time' },
         },
+        required: ['name', 'description', 'contentType'],
       },
       ImageListResponse: {
         type: 'object',
@@ -301,7 +344,7 @@ export const openApiSpec: OpenAPIObject = {
         type: 'object',
         properties: {
           totalImages: { type: 'integer', minimum: 0 },
-          lastUpdated: { type: 'string', format: 'date-time' },
+          lastUpdated: { type: ['string', 'null'], format: 'date-time' },
         },
       },
       AuditLogsResponse: {
@@ -327,7 +370,7 @@ export const openApiSpec: OpenAPIObject = {
         type: 'object',
         properties: {
           data: { $ref: '#/components/schemas/ImageMetadata' },
-          status: { type: 'integer', example: 201 },
+          status: { type: 'integer', example: 202 },
           errorMessage: { type: 'string' },
         },
       },
