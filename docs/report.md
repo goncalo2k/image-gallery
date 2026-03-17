@@ -90,36 +90,36 @@ Note that all endpoints work exactly the same in the deployed version and in the
 Hit `GET https://image-gallery.goncalo2k.pt/images` to retrieve paginated metadata (`offset`, `limit` query params). Fetch an individual asset with `GET https://image-gallery.goncalo2k.pt/images/{id}`; successful responses include `Content-Type`, cache headers, and `ALT_HEADER_NAME` for instant consumption in web browsers.
 
 #### Testing Evidence
-![GET /images Success](./media/testing-evidence/images-success.png){height=300px}
-![GET /images/:id Success](./media/testing-evidence/images-id-success.png){height=300px}
-![GET /images/:id Failure](./media/testing-evidence/images-id-failure.png){height=300px}
+![GET /images Success](./media/testing-evidence/images-success.png)
+![GET /images/:id Success](./media/testing-evidence/images-id-success.png)
+![GET /images/:id Failure](./media/testing-evidence/images-id-failure.png)
 
 ### Ingesting Images
 Hit `POST https://image-gallery.goncalo2k.pt/images` with fields `file`, `name?`, and `description?`. To ingest from a remote URL, POST to `/images/external` with `fileUrl`, `name?`, `description?`.
 
 #### Testing Evidence
 Upload from Local File returns 200 (Ok) when a file with the same name already existed
-![Upload from Local File Successfull (200 - file already existed)](./media/testing-evidence/upload-file-success-already-existent.png){height=300px}
+![Upload from Local File Successfull (200 - file already existed)](./media/testing-evidence/upload-file-success-already-existent.png)
 Upload from Local File returns 202 (Accepted) when the file blob was successfully uploaded to R2. The file metadata is still being created and there is a risk, while this endpoint does not return 200, that the file can be discarded, in case the metadata upload fails.
-![Upload from Local File Successfull (202 - file was accepted)](./media/testing-evidence/upload-file-success-new.png){height=300px}
+![Upload from Local File Successfull (202 - file was accepted)](./media/testing-evidence/upload-file-success-new.png)
 Upload from Local File returns 400 (Bad Request) when any of the request parts are not correct. In this example, the name has more than one '.', which is invalid.
-![Upload from Local File Failure (400 - file name is invalid)](./media/testing-evidence/upload-file-failure-bad-name.png){height=300px}
+![Upload from Local File Failure (400 - file name is invalid)](./media/testing-evidence/upload-file-failure-bad-name.png)
 
 ### Deleting Images
 Hit `DELETE https://image-gallery.goncalo2k.pt/images/:id`.
 
 #### Testing Evidence
 Delete file returns 200 (Success) when a file is successfully deleted.
-![Delete file Success (200 - file deleted successfully)](./media/testing-evidence/delete-success.png){height=300px}
+![Delete file Success (200 - file deleted successfully)](./media/testing-evidence/delete-success.png)
 Delete file returns 404 (Not Found) when targeted at a file that does not exist.
-![Delete file Failure (404 - file not found)](./media/testing-evidence/delete-file-not-found.png){height=300px}
+![Delete file Failure (404 - file not found)](./media/testing-evidence/delete-file-not-found.png)
 
 ### Administrative Audit Endpoint
 Send `GET https://image-gallery.goncalo2k.pt/images/audit?offset=0&limit=20` with the Access headers to retrieve recent uploads plus aggregate stats (`totalImages`, `lastUpdated`). Use this endpoint to populate dashboards or monitor image insertion or deletion. Note that this endpoint is also paginated.
 
 #### Testing evidence 
-In the deployed version, reaching the ```/audit``` endpoint via a web browser or via cURL without the correct headers yields Cloudflare's ***Unauthorized Access Page**, as intended. ![Audit Unauthorized](./media/testing-evidence/audit-forbiden.png){height=300px}
-After using the correct headers, a successful response is seen. ![Audit Success](./media/testing-evidence/audit-success.png){height=300px}
+In the deployed version, reaching the ```/audit``` endpoint via a web browser or via cURL without the correct headers yields Cloudflare's ***Unauthorized Access Page**, as intended. ![Audit Unauthorized](./media/testing-evidence/audit-forbiden.png)
+After using the correct headers, a successful response is seen. ![Audit Success](./media/testing-evidence/audit-success.png)
 
 
 ## 6. Solution Architecture
@@ -186,17 +186,17 @@ The creation of building blocks was developed
  1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com)</li>
  2. Go to the **Storage** section, look for R2 and select your bucket.</li>
  3. Disable public access for your bucket.</li>
-    ![Disabling of Public Access to Bucket](./media/r2/r2_security.png){height=300px}
+    ![Disabling of Public Access to Bucket](./media/r2/r2_security.png)
 
 ### 7.4 Service Token Creation
 1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Go to **Zero Trust**, **Access Controls** and then **Service Credentials**
 3. Select **Create Service Token**
-![Create Service Token](./media/token/token_1.png){height=300px}
+![Create Service Token](./media/token/token_1.png)
 4. Add a name and a token duration, then generate it
-![Adding Application to Access Controls](./media/token/token_2.png){height=300px}
+![Adding Application to Access Controls](./media/token/token_2.png)
 5. Finally, save your **Client Id** and **Client Secret**
-![Adding Application to Access Controls](./media/token/token_3.png){height=300px}
+![Adding Application to Access Controls](./media/token/token_3.png)
 6. Then, use Wrangler to put these values in the **Secret Store** 
 ```npx wrangler secret put CF-Access-Client-Secret```
 ```npx wrangler secret put CF-Access-Client-Id```
@@ -205,34 +205,34 @@ The creation of building blocks was developed
 1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Go to **Zero Trust**, **Access Controls** and then **Policies**
 3. Then, **Add a policy**
-    ![Adding Application to Access Controls](./media/pol/pol_1.png){height=300px}
+    ![Adding Application to Access Controls](./media/pol/pol_1.png)
 4. Set its action as **Service Auth**, add a policy name, and its session duration
-    ![Adding Application to Access Controls](./media/pol/pol_2.png){height=300px}
+    ![Adding Application to Access Controls](./media/pol/pol_2.png)
 5. Then, add an **include rule** and select **Service Token**
-    ![Adding Application to Access Controls](./media/pol/pol_3.png){height=300px}
+    ![Adding Application to Access Controls](./media/pol/pol_3.png)
 6. Use the previously created token
-    ![Adding Application to Access Controls](./media/pol/pol_4.png){height=300px}
+    ![Adding Application to Access Controls](./media/pol/pol_4.png)
 
 
 ### 7.6 Access Policy Creation
 1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Go to **Zero Trust**, **Access Controls** and then **Applications**
 3. Click **Add Application**
-    ![Adding Application to Access Controls](./media/zt/zt_1.png){height=300px}
+    ![Adding Application to Access Controls](./media/zt/zt_1.png)
 4. Select **Self-hosted**
-    ![Select "Self Hosted Application"](./media/zt/zt_2.png){height=300px}
+    ![Select "Self Hosted Application"](./media/zt/zt_2.png)
 5. Add the public hostname for the app you want to protect (in this case, image-gallery.goncalo2k.pt)
-    ![Adding Public Hostname for Application](./media/zt/zt_3.png){height=300px}
+    ![Adding Public Hostname for Application](./media/zt/zt_3.png)
 6. Add Application name, session duration, and select the intended paths and subdomains if needed. 
-    ![Adding Application Information](./media/zt/zt_4.png){height=300px}
+    ![Adding Application Information](./media/zt/zt_4.png)
 7. Then, go on to **Access Policies** section and select an existing policy
-    ![Adding Application to Access Controls](./media/zt/zt_5.png){height=300px}
+    ![Adding Application to Access Controls](./media/zt/zt_5.png)
 8. Select the previously created policy
-    ![Select Previously Created Policy](./media/zt/zt_6.png){height=300px}
+    ![Select Previously Created Policy](./media/zt/zt_6.png)
  9. Then hit **Next**
-    ![Click Next](./media/zt/zt_7.png){height=300px}
+    ![Click Next](./media/zt/zt_7.png)
 10. In the **Advanced Settings**, turn on **401 Response for Service Auth policies**
-    ![Turn on 401 Response for Service Auth policies](./media/zt/zt_8.png){height=300px}
+    ![Turn on 401 Response for Service Auth policies](./media/zt/zt_8.png)
 
 ### 7.7 Worker Code Development
 Each handler exists for a specific operational need:
