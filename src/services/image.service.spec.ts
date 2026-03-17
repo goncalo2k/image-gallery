@@ -49,11 +49,11 @@ const createDatabaseMock = (rows: Record<string, unknown>[], options?: DatabaseM
 
   const countStatement = options?.countRejects
     ? ({
-        first: vi.fn().mockRejectedValue(new Error('count failed')),
-      } as unknown as D1PreparedStatement)
+      first: vi.fn().mockRejectedValue(new Error('count failed')),
+    } as unknown as D1PreparedStatement)
     : ({
-        first: vi.fn().mockResolvedValue({ total: totalValue }),
-      } as unknown as D1PreparedStatement);
+      first: vi.fn().mockResolvedValue({ total: totalValue }),
+    } as unknown as D1PreparedStatement);
 
   return {
     prepare: vi.fn((sql: string) => {
@@ -249,21 +249,49 @@ describe('ImageService.getImagesAuditLogs', () => {
     const service = new ImageService(mapper);
 
     const response = await service.getImagesAuditLogs(ctx);
-
+    expect(response.data).toBeDefined();
     expect(response.count).toBe(1);
-    expect(response.data.recentUploads).toHaveLength(1);
+    expect(response.data?.recentUploads).toHaveLength(1);
     expect(response.total).toBeNaN();
-    expect(response.data.statistics.totalImages).toBeNaN();
+    expect(response.data?.statistics.totalImages).toBeNaN();
   });
 });
 
 describe('ImageService validation', () => {
   const service = new ImageService(mapper);
 
-  it('rejects invalid names when fetching by name', async () => {
-    await expect(
-      service.getImageByName({} as R2Bucket, {} as D1Database, '../evil')
-    ).rejects.toThrow('Invalid file name format');
+  it('returns undefined when blob cannot be found by id', async () => {
+    const bucketGet = vi.fn().mockResolvedValue(undefined);
+    const bucket = {
+      get: bucketGet,
+    } as unknown as R2Bucket;
+
+    const result = await service.getImageById(bucket, {} as D1Database, 'missing-id');
+
+    expect(result).toBeUndefined();
+    expect(bucketGet).toHaveBeenCalledWith('missing-id');
+  });
+
+  it('returns undefined when metadata is missing required fields', async () => {
+    const blobValue = new Blob(['test'], { type: 'image/png' });
+    const bucket = {
+      get: vi.fn().mockResolvedValue({
+        blob: vi.fn().mockResolvedValue(blobValue),
+        httpMetadata: { contentType: 'image/png' },
+      }),
+    } as unknown as R2Bucket;
+
+    const db = {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue({ name: 'file.png', description: undefined, created_at: undefined }),
+        }),
+      }),
+    } as unknown as D1Database;
+
+    const result = await service.getImageById(bucket, db, 'incomplete');
+
+    expect(result).toBeUndefined();
   });
 
   it('flags invalid names on upload', async () => {

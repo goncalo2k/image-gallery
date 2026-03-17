@@ -141,6 +141,10 @@ Scripts in `package.json` wrap the most common D1 workflows:
 | `pnpm run test` | Execute Vitest suites once. |
 | `pnpm run cf-typegen` | Regenerate bindings/types for the current Wrangler env. |
 | `pnpm run setup-local-db` / `pnpm run deploy-db` | Apply `schema.sql` to local or remote D1. |
+| `node scripts/batch-upload.mjs` | Bulk-ingest placeholder images via `/images/external` with configurable concurrency, rate limiting, and remote file URL (configure `scripts/.env`). |
+| `node scripts/clear-all-images.mjs` | Iteratively delete every stored image through the public API (uses `GET /images` + `DELETE /images/:id`), supports dry-run + batch caps. |
+
+> Utility scripts read credentials + headers from `scripts/.env` (copy `scripts/.env.example` to `scripts/.env`). Key knobs include `CONCURRENCY`, `DELAY_MS`, `FILE_URL` (uploads) and `PAGE_SIZE`, `DRY_RUN`, `MAX_BATCHES` (cleanup). Clear script now targets image IDs (primary keys) end-to-end.
 
 ## Environment & configuration
 

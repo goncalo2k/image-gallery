@@ -15,11 +15,11 @@ export function shouldRequireAuth(c: AppContext): boolean {
     const authEnabled = c.env.ENABLE_AUTH;
     if (!authEnabled) { return false; }
 
-    const protectedEndpoints = parseCsv(c.env.AUTH_ROUTES);
-
     if (PUBLIC_PATHS.some((publicPath) => pathMatches(c.req.path, publicPath))) {
         return false;
     }
+    
+    const protectedEndpoints = parseCsv(c.env.AUTH_ROUTES);
 
     if (protectedEndpoints.length === 0) {
         return true;
@@ -30,7 +30,6 @@ export function shouldRequireAuth(c: AppContext): boolean {
 
 export async function authMiddleware(c: AppContext, next: Next): Promise<Response | void> {
     if (!shouldRequireAuth(c)) {
-
         return next();
     }
 

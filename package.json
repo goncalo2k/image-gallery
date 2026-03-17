@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
-    "prepare": "husky"
+    "prepare": "husky",
+    "batch-upload": "node scripts/batch-upload.mjs",
+    "clear-images": "node scripts/clear-all-images.mjs"
   },
   "dependencies": {
     "@hono/eslint-config": "^2.1.0",

@@ -26,7 +26,7 @@ const createServiceMock = () => {
   const mocks = {
     getImagesAuditLogs: vi.fn(),
     getImagesMetadata: vi.fn(),
-    getImageByName: vi.fn(),
+    getImageById: vi.fn(),
     uploadImage: vi.fn(),
     uploadExternalImage: vi.fn(),
     deleteImage: vi.fn(),
@@ -172,7 +172,7 @@ describe('ImageController', () => {
     const description = faker.lorem.sentence();
     const contentType = 'image/png';
     const file = new File([faker.string.binary({ length: 10 })], `${name}.png`, { type: contentType });
-    (serviceMocks.getImageByName as Mock).mockResolvedValue({
+    (serviceMocks.getImageById as Mock).mockResolvedValue({
       name,
       description,
       contentType,
@@ -182,7 +182,7 @@ describe('ImageController', () => {
 
     const response = await controller.getImage(ctx);
 
-    expect(serviceMocks.getImageByName).toHaveBeenCalled();
+    expect(serviceMocks.getImageById).toHaveBeenCalled();
     expect(response.headers.get('Content-Type')).toBe(contentType);
     expect(response.headers.get('X-Image-Alt')).toBe(description);
   });
@@ -199,12 +199,12 @@ describe('ImageController', () => {
       } as unknown as AppContext['req'],
     });
 
-    (serviceMocks.getImageByName as Mock).mockResolvedValue(undefined);
+    (serviceMocks.getImageById as Mock).mockResolvedValue(undefined);
 
     const response = await controller.getImage(ctx);
 
-    expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: `Image ${name} not found` }, 404);
-    expect(response).toEqual({ body: { errorMessage: `Image ${name} not found` }, status: 404 });
+    expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: `Image with ${name} not found` }, 404);
+    expect(response).toEqual({ body: { errorMessage: `Image with ${name} not found` }, status: 404 });
   });
 
   it('uploads image via mapper and service', async () => {
