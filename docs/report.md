@@ -47,22 +47,54 @@ The initial requirements presented for this product were the following:
 
 ---
 
-## 2. Real Utilization Example (Portfolio)
+## 2. Real Use Cases
+r
+1. **Editorial portfolio backend** – The Worker powers a personal portfolio that cycles through generative art drops. CMS jobs call `/images/external` with curated URLs, the Worker stores binaries in R2, generates Workers AI alt text, and exposes metadata via `/images` and `/images/:id`. Frontends consume the `ALT_HEADER_NAME` header to keep accessibility text synchronized with each asset.
+2. **Internal design library** – A design team mirrors approved brand assets by uploading local files through `/images` (multipart). D1 metadata acts as the source of truth for descriptions, while `GET /images/audit` feeds a Notion dashboard that tracks total assets and most recent updates.
+3. **Sandbox automation** – QA pipelines use `scripts/batch-upload.mjs` to seed placeholder content before running integration tests, then invoke `scripts/clear-all-images.mjs` (or direct `DELETE /images/:id` calls) to reset environments. This keeps previews faithful to production without manually scrubbing buckets.
 
-## 3. Instructions to Use the Platform
+## 3. Customer Experience
+
+- **Fast delivery** – Images stream from Cloudflare’s edge with cache hits served immediately and cache misses still benefitting from R2’s proximity to Workers. Predictable latency keeps portfolio visitors and internal stakeholders engaged.
+- **Accessible by default** – Every response exposes descriptive text through `ALT_HEADER_NAME`, so consuming apps can provide meaningful alt text without a separate metadata fetch. Missing descriptions are filled in automatically via Workers AI.
+- **Self-service operations** – The REST surface is minimal (`/images`, `/images/:id`, `/images/audit`), and the OpenAPI schema + Swagger UI give non-engineers an explorable contract. Scripts handle common chores (bulk upload/clear), reducing toil for content teams.
+- **Secure touchpoints** – Cloudflare Access service tokens, CORS allow-lists, and timing-safe credential checks ensure that only trusted systems can mutate the gallery, while public endpoints (`/health`, `/docs`, `/openapi.json`) remain open for observability.
+
+## 4. Instructions to Use the Platform
+
 ### Viewing Images
-#### Deployed Version
-#### Local Development
+
+- **Deployed version** – Hit `GET https://image-gallery.goncalo2k.pt/images` to retrieve paginated metadata (`offset`, `limit` query params). Fetch an individual asset with `GET https://image-gallery.goncalo2k.pt/images/{id}`; successful responses include `Content-Type`, cache headers, and `ALT_HEADER_NAME` for instant consumption in web/mobile clients.
+- **Local development** – Run `pnpm install && pnpm run dev` to start `wrangler dev` on `http://localhost:8787`. The same endpoints (`/images`, `/images/:id`, `/images/audit`) are available locally, using bindings defined in `.dev.vars` and `wrangler.jsonc`.
 
 ### Ingesting Images
-#### Deployed Version
-#### Local Development
+
+- **Deployed version** – Hit `POST https://image-gallery.goncalo2k.pt/images` with fields `file`, `name?`, and `description?`. To ingest from a remote URL, POST to `/images/external` with `fileUrl`, `name?`, `description?`. Include `CLIENT_ID_HEADER` and `CLIENT_SECRET_HEADER` values provided by Cloudflare Access.
+- **Local development** – Use the same endpoints against `http://localhost:8787`. Example curl snippet:
+
+  ```bash
+  curl -X POST \
+    -H "CF-Access-Client-Id:$CLIENT_ID" \
+    -H "CF-Access-Client-Secret:$CLIENT_SECRET" \
+    -F "file=@./sample.jpg" \
+    -F "name=sample.jpg" \
+    http://localhost:8787/images
+  ```
+
+  For remote ingestion:
+
+  ```bash
+  curl -X POST \
+    -H "CF-Access-Client-Id:$CLIENT_ID" \
+    -H "CF-Access-Client-Secret:$CLIENT_SECRET" \
+    -F "fileUrl=https://picsum.photos/1200/800" \
+    http://localhost:8787/images/external
+  ```
 
 ### Administrative Audit Endpoint
-#### Deployed Version
-#### Local Development
 
-## 4. Customer Experience
+- **Deployed version** – Send `GET https://image-gallery.goncalo2k.pt/images/audit?offset=0&limit=20` with the Access headers to retrieve recent uploads plus aggregate stats (`totalImages`, `lastUpdated`). Use this endpoint to populate dashboards or monitor ingestion health.
+- **Local development** – The same call works locally. Coupled with `pnpm run setup-local-db`, you can seed the D1 instance via `schema.sql`, populate images, and verify the audit payload before deploying to production.
 
 ## 5. Solution Architecture
 Image gallery was built as a combination of several Cloudflare-managed services that each handle a discrete responsibility while sharing data through Worker bindings and secure environment variables.
@@ -129,6 +161,9 @@ The creation of building blocks was developed
 ![Adding Application to Access Controls](./media/token/token_2.png)
 5. Finally, save your **Client Id** and **Client Secret**
 ![Adding Application to Access Controls](./media/token/token_3.png)
+6. Then, use Wrangler to put these values in the **Secret Store** 
+```npx wrangler secret put CF-Access-Client-Secret```
+```npx wrangler secret put CF-Access-Client-Id```
 
 ### 6.5 Security Policy Creation
 1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com)
@@ -170,8 +205,8 @@ The creation of building blocks was developed
 The Worker architecture optimizes both latency and resource consumption:
 
 1. **Edge caching as first hop** – `ImageController.getImage` hits `caches.default` before R2/D1 and caches successful responses with immutable TTLs and strong `ETag`s. Deletes schedule `caches.default.delete()` inside `executionCtx.waitUntil` to prevent stale assets lingering at the edge.
-2. **Parallel ingestion** – R2 uploads and Workers AI captioning run concurrently via `Promise.allSettled`. Metadata writes execute in `executionCtx.waitUntil`, so client requests only wait for blob persistence and caption generation, not D1 inserts.
-3. **Smart payload bounds** – `MAX_UPLOAD_SIZE_MB` guards uploads, while `resizeImageForAI` uses the Images binding to downscale >1 MB buffers to 1024×1024 JPEGs, reducing inference cost and memory pressure.
+2. **Parallel ingestion** – R2 uploads and Workers AI captioning run concurrently via `Promise.allSettled`. Deletions from R2 and D1 are also parallelized in the `/DELETE /images/:id`, speeding up deletions. Metadata writes upon file upload execute in `executionCtx.waitUntil`, so client requests only wait for blob persistence and caption generation, not D1 inserts. Finally, insertions and deletions from `Cloudlfare's CDN` are also done via non-blocking operations, enabling faster response times.
+3. **Smart payload bounds** – `MAX_UPLOAD_SIZE_MB` guards uploads, while `resizeImageForAI` uses the Images binding to downscale >1 MB buffers to 1024×1024 JPEGs, reducing inference cost and allowing the AI models to process all images sent within the 20MB range. 
 4. **Efficient pagination** – `getPaginationParams` sanitizes `offset`/`limit` (max 100) for `/images` and `/images/audit`, avoiding large scans. Prepared statements reuse query plans, keeping D1 latency steady.
 5. **Streamed delivery** – Downloaded R2 objects are wrapped in `File` instances and streamed to the client, so Workers can start sending bytes immediately instead of buffering entire images.
 6. **Operational throttling** – Automation scripts (`scripts/batch-upload.mjs`, `scripts/clear-all-images.mjs`) expose concurrency/delay knobs, ensuring bulk jobs do not overwhelm the Worker or exceed API quotas.
@@ -180,12 +215,12 @@ The Worker architecture optimizes both latency and resource consumption:
 
 Despite previous experience with Cloudflare Workers, several capabilities required deeper research before implementing the final solution. Each gap below lists the referenced material and the concrete takeaway that shaped the codebase.
 
-1. **Workers AI pipeline design** – The [Workers AI use-case catalog](https://developers.cloudflare.com/use-cases/ai/) clarified how to trigger multimodal models from Workers, what payload shapes they expect, and how to stay within neuron budgets. This guided the `ImageService.generateImageAltText` implementation (resizing buffers before inference and capping token counts).
-2. **D1 query ergonomics** – The [D1 documentation](https://developers.cloudflare.com/d1/) explained prepared statements, result helpers (`.first()`, `.run()`), and schema deployment flows. Those patterns now appear in every metadata access path plus the `pnpm run setup-local-db` / `deploy-db` scripts.
-3. **R2 usage from Workers** – The [R2 Workers API reference](https://developers.cloudflare.com/r2/api/workers/workers-api-usage/) highlighted binary upload strategies, HTTP metadata, and consistency notes, informing the `uploadImageBlob` helper and the immutable caching headers returned on reads.
+1. **Workers AI pipeline design** – The [Workers AI use-case catalog](https://developers.cloudflare.com/use-cases/ai/) clarified how to use Workers AI and all the necessary models from Workers, what payload shapes they expect, and how to stay within neuron budgets (capping token counts was the chosen approach). This guided the `ImageService.generateImageAltText` implementation. However, it soon became obvious that images over a few bytes would be problematic, as the AI model in use ([llava-1.5-7b-hf](https://developers.cloudflare.com/workers-ai/models/llava-1.5-7b-hf/)) didn't accept such files. For this, Transform Image's worker binding was used to resize images and the smaller, resized buffers were utilized for the inference.
+2. **D1 query ergonomics** – The [D1 documentation](https://developers.cloudflare.com/d1/) explained prepared statements, result helpers (`.first()`, `.run()`), and schema deployment flows. Those patterns are used in every metadata access path. In addition, the `pnpm run setup-local-db` / `deploy-db` scripts are also based in D1 functions, by using the API's endpoints.
+3. **R2 usage from Workers** – The [R2 Workers API reference](https://developers.cloudflare.com/r2/api/workers/workers-api-usage/) was key to understand how the `R2Bucket`binding works and how uploads, fetches and deletions work within a Worker's context.
 4. **Typed bindings** – The Worker best-practices note on [wrangler types](https://developers.cloudflare.com/workers/best-practices/workers-best-practices/#generate-binding-types-with-wrangler-types) showed how to auto-generate `worker-configuration.d.ts`, which led to the `pnpm run cf-typegen` script and the strongly typed `AppEnv` interface.
-5. **Edge caching semantics** – Building `ImageController.getImage` required revisiting the [Cache API docs](https://developers.cloudflare.com/workers/runtime-apis/cache/) to confirm how `caches.default.put()` behaves within `waitUntil`, how keys are derived, and how invalidation works after deletions.
-6. **Execution context guarantees** – The [Context API reference](https://developers.cloudflare.com/workers/runtime-apis/context/) clarified that `executionCtx.waitUntil` may outlive the request but not the Worker deployment, reinforcing the decision to offload D1 writes and cache invalidations into that lifecycle hook.
+5. **Edge caching semantics** – Building `ImageController.getImage` required revisiting the [Cache API docs](https://developers.cloudflare.com/workers/runtime-apis/cache/) to confirm how `caches.default.put()` behaves within `waitUntil`, what are good practices in key-creation, what cache strategies can be implemented and how cache invalidation can be done (in this case, after deletions) .
+6. **Execution context guarantees** – The [Context API reference](https://developers.cloudflare.com/workers/runtime-apis/context/) clarified how non-blocking operations can be leverage in Workers, via `executionCtx.waitUntil`, as this may extend a worker's lifetime for another extra 30 seconds, reinforcing the decision to offload D1 writes and cache invalidations into that lifecycle hook, enabling the API to have faster response times.
 7. **Timing-safe auth** – To harden `/images/audit` and any protected routes, the Worker follows the [timing-attack protection example](https://developers.cloudflare.com/workers/examples/protect-against-timing-attacks/) by comparing credentials with `crypto.subtle.timingSafeEqual`, preventing side-channel leaks even when headers are incorrect.
 
 Documenting these learnings ensures future contributors know which Cloudflare primitives influenced each architectural decision and where to dig deeper when requirements evolve.
@@ -194,7 +229,7 @@ Documenting these learnings ensures future contributors know which Cloudflare pr
 
 Security spans middleware, bindings, and operational guardrails:
 
-1. **Authenticated admin routes** – `auth.middleware.ts` inspects `CLIENT_ID_HEADER` / `CLIENT_SECRET_HEADER`, enforces timing-safe comparisons with `crypto.subtle.timingSafeEqual`, and scopes protection via `AUTH_ROUTES` so sensitive endpoints (e.g., `/images/audit`) require valid service tokens.
+1. **Authenticated admin routes** – `auth.middleware.ts` inspects `CF-Access-Client-Id` / `CF-Access-Client-Secret`, enforces timing-safe comparisons with `crypto.subtle.timingSafeEqual`, and scopes protection via `AUTH_ROUTES` so sensitive endpoints (e.g., `/images/audit`) require valid service tokens.
 2. **Least-privilege bindings** – `wrangler.jsonc` binds only the required resources (R2, D1, Images, AI) plus explicit env vars. Secrets never live in code, and `.dev.vars.example` documents placeholders so local dev mirrors production without credential reuse.
 3. **Request hygiene** – `cors.middleware.ts` parses `ALLOWED_ORIGINS` CSV allow-lists, rejecting disallowed origins. `security-headers.middleware.ts` adds CSP, `X-Content-Type-Options`, and `Referrer-Policy`, relaxing CSP solely for `/docs` so Swagger assets can load safely.
 4. **Data consistency & cache cleanup** – Delete operations fan out to R2 + D1 via `Promise.allSettled`, and cache entries are purged asynchronously with `executionCtx.waitUntil(caches.default.delete(...))`, preventing orphaned binaries or stale public responses.
