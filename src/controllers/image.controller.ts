@@ -32,6 +32,8 @@ export class ImageController {
     }
 
     async getImage(c: AppContext): Promise<Response> {
+        const match = await caches.default.match(c.req.raw);
+        if (match) { return match; }
         const id = String(c.req.param('id'));
         try {
             const image = await this.imageService.getImageById(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, id);
@@ -103,6 +105,12 @@ export class ImageController {
 
     async deleteImage(c: AppContext): Promise<Response> {
         const id = String(c.req.param('id'));
+        const cacheKey = new Request(c.req.raw.url);
+        c.executionCtx.waitUntil(
+            caches.default.delete(cacheKey).catch((cacheError: unknown) => {
+                console.warn('Failed to invalidate cache:', cacheError);
+            })
+        );
         try {
             const deletedResponse = await this.imageService.deleteImage(c, id);
             if (deletedResponse.status === 500) { throw Error(`Couldn't delete image.`); }

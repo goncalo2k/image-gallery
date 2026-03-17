@@ -14,10 +14,14 @@ vi.mock('../utils/logger', () => ({
 }));
 
 const cachePutSpy = vi.fn();
+const cacheMatchSpy = vi.fn();
+const cacheDeleteSpy = vi.fn();
 beforeAll(() => {
   (globalThis as unknown as { caches: CacheStorage }).caches = {
     default: {
       put: cachePutSpy,
+      match: cacheMatchSpy,
+      delete: cacheDeleteSpy,
     } as unknown as Cache,
   } as unknown as CacheStorage;
 });
@@ -50,12 +54,15 @@ const createContext = (overrides?: Partial<AppContext>) => {
     const status = typeof init === 'number' ? init : init?.status ?? 200;
     return { body, status } as Response;
   });
+  const baseUrl = faker.internet.url();
+  const baseMethod = faker.internet.httpMethod();
   const baseReq = {
-    path: faker.internet.url(),
-    method: faker.internet.httpMethod(),
+    path: baseUrl,
+    method: baseMethod,
     param: vi.fn(),
     formData: vi.fn(),
     header: vi.fn(),
+    raw: new Request(baseUrl, { method: baseMethod }),
   };
   const baseRes = {
     status: 200,
@@ -114,6 +121,11 @@ describe('ImageController', () => {
   beforeEach(() => {
     loggerErrorSpy.mockReset();
     cachePutSpy.mockReset();
+    cacheMatchSpy.mockReset();
+    cacheDeleteSpy.mockReset();
+    cachePutSpy.mockResolvedValue(undefined);
+    cacheMatchSpy.mockResolvedValue(undefined);
+    cacheDeleteSpy.mockResolvedValue(true);
   });
 
   it('returns audit logs from service', async () => {
