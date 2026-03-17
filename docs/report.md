@@ -67,18 +67,19 @@ The focus of this API is to fulfill the systems' requirements without compromisi
 
 ### Local development:
 #### Prerequisites:
-1. Install NPM or PNPM;
+1. Install PNPM;
+2. All the intended Cloudflare Products created. If there is the need to understand how to do this, jumping to section 7.1 is recommend;
 
 #### Local Setup
 1. Clone the [github repo](https://github.com/goncalo2k/image-gallery)
-2. Install dependencies using ```npm i``` or ```pnpm i```
-3. Update ```wrangler.jsonc``` to contain the desired ```routes``` and ```custom_domains```, the bindings for ```d1_databases``` and ```r2_buckets``` as well as the Woker's ```name```. Note that you can use the database and bucket bindings with local or remote versions.
+2. Install dependencies using ```pnpm i```
+3. Update ```wrangler.jsonc``` to contain the desired ```routes``` and ```custom_domains```, the bindings for ```d1_databases``` and ```r2_buckets``` as well as the Worker's ```name```. Note that you can use the database and bucket bindings with local or remote versions.
 4. Copy ***.dev.vars.example*** and rename it to ***.dev.vars***, updating the values inside.
-5. For local D1 setup, run ```npm run setup-local-db``` or ```pnpm run setup-local-db```.
-6. (Optional) To populate the database and the blob storage, use ```npm run batch-upload``` or ```pnpm run batch-upload```.
-7. (Optional) To purge both D1 and R2, run ```npm run clear-images``` or ```pnpm run clear-images```.
-8. Run ```npm run cf-typegen``` or ```pnpm run cf-typegen``` to generate types.
-9. Then, just run the Worker with ```npm dev``` or ```pnpm dev```
+5. For local D1 setup, run ```pnpm run setup-local-db```.
+6. (Optional) To populate the database and the blob storage, use ```pnpm run batch-upload```.
+7. (Optional) To purge both D1 and R2, run ```pnpm run clear-images```.
+8. Run ```pnpm run cf-typegen``` to generate types.
+9. Then, just run the Worker with ```pnpm dev```
 
 Note that, on every commit, both ```pnpm lint``` && ```pnpm test``` are run to ensure nothing is broken.
 

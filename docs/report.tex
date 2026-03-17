@@ -96,20 +96,21 @@ The focus of this API is to fulfill the systems' requirements without compromisi
 
 \subsubsection{Prerequisites:}
 \begin{enumerate}[leftmargin=*]
-  \item Install NPM or PNPM;
+  \item Install PNPM;
+  \item All the intended Cloudflare Products created. If there is the need to understand how to do this, jumping to section 7.1 is recommend;
 \end{enumerate}
 
 \subsection{Local Setup}
 \begin{enumerate}[leftmargin=*]
   \item Clone the \href{https://github.com/goncalo2k/image-gallery}{github repo}
-  \item Install dependencies using \texttt{npm i} or \texttt{pnpm i}
-  \item Update \texttt{wrangler.jsonc} to contain the desired \texttt{routes} and \texttt{custom\_domains}, the bindings for \texttt{d1\_databases} and \texttt{r2\_buckets} as well as the Woker's \texttt{name}. Note that you can use the database and bucket bindings with local or remote versions.
+  \item Install dependencies using \texttt{pnpm i}
+  \item Update \texttt{wrangler.jsonc} to contain the desired \texttt{routes} and \texttt{custom\_domains}, the bindings for \texttt{d1\_databases} and \texttt{r2\_buckets} as well as the Worker's \texttt{name}. Note that you can use the database and bucket bindings with local or remote versions.
   \item Copy \texttt{.dev.vars.example} and rename it to \texttt{.dev.vars}, updating the values inside.
-  \item For local D1 setup, run \texttt{npm run setup-local-db} or \texttt{pnpm run setup-local-db}.
-  \item (Optional) To populate the database and the blob storage, use \texttt{npm run batch-upload} or \texttt{pnpm run batch-upload}.
-  \item (Optional) To purge both D1 and R2, run \texttt{npm run clear-images} or \texttt{pnpm run clear-images}.
-  \item Run \texttt{npm run cf-typegen} or \texttt{pnpm run cf-typegen} to generate types.
-  \item Then, just run the Worker with \texttt{npm dev} or \texttt{pnpm dev}
+  \item For local D1 setup, run \texttt{pnpm run setup-local-db}.
+  \item (Optional) To populate the database and the blob storage, use \texttt{pnpm run batch-upload}.
+  \item (Optional) To purge both D1 and R2, run \texttt{pnpm run clear-images}.
+  \item Run \texttt{pnpm run cf-typegen} to generate types.
+  \item Then, just run the Worker with \texttt{pnpm dev}
 \end{enumerate}
 
 Note that, on every commit, both \texttt{pnpm lint} \&\& \texttt{pnpm test} are run to ensure nothing is broken.
@@ -124,15 +125,15 @@ Hit \texttt{GET https://image-gallery.goncalo2k.pt/images} to retrieve paginated
 
 \begin{figure}[h]
 \centering
-\begin{minipage}{0.32\textwidth}
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/images-success.png}
-\end{minipage}
-\begin{minipage}{0.32\textwidth}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/images-id-success.png}
-\end{minipage}
-\begin{minipage}{0.32\textwidth}
+\end{minipage}\\[0.8ex]
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/images-id-failure.png}
 \end{minipage}
@@ -145,15 +146,15 @@ Hit \texttt{POST https://image-gallery.goncalo2k.pt/images} with fields \texttt{
 
 \begin{figure}[h]
 \centering
-\begin{minipage}{0.32\textwidth}
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/upload-file-success-already-existent.png}
-\end{minipage}
-\begin{minipage}{0.32\textwidth}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/upload-file-success-new.png}
-\end{minipage}
-\begin{minipage}{0.32\textwidth}
+\end{minipage}\\[0.8ex]
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/upload-file-failure-bad-name.png}
 \end{minipage}
@@ -166,11 +167,11 @@ Hit \texttt{DELETE https://image-gallery.goncalo2k.pt/images/:id}.
 
 \begin{figure}[h]
 \centering
-\begin{minipage}{0.45\textwidth}
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/delete-success.png}
-\end{minipage}
-\begin{minipage}{0.45\textwidth}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/delete-file-not-found.png}
 \end{minipage}
@@ -183,11 +184,11 @@ Send \texttt{GET https://image-gallery.goncalo2k.pt/images/audit?offset=0\&limit
 
 \begin{figure}[h]
 \centering
-\begin{minipage}{0.45\textwidth}
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/audit-forbiden.png}
-\end{minipage}
-\begin{minipage}{0.45\textwidth}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
 \centering
 \includegraphics[width=\linewidth]{media/testing-evidence/audit-success.png}
 \end{minipage}
