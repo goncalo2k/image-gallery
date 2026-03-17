@@ -5,6 +5,7 @@ const IMAGE_NAME_REGEX = /^[a-z0-9 _-]+(\.[a-z]+)?$/i;
 export const BYTES_PER_MB = 1024 * 1024;
 export const ALLOWED_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml', 'image/avif'] as const;
 export const ALLOWED_IMAGE_MIME_SET = new Set<string>(ALLOWED_IMAGE_MIME_TYPES);
+const ALLOWED_HTTP_PROTOCOLS = new Set(['https:']);
 
 export function parseCsv(value: string): string[] {
     return value
@@ -62,4 +63,30 @@ export function isAllowedImageContentType(contentType: string | null | undefined
 
 export function allowedImageMimeTypesList(): string {
     return ALLOWED_IMAGE_MIME_TYPES.join(', ');
+}
+
+export function parseHttpUrl(rawUrl: string): URL {
+    if (!rawUrl) {
+        throw Error('URL is required');
+    }
+
+    let parsedUrl: URL;
+    try {
+        parsedUrl = new URL(rawUrl);
+    } catch (error) {
+        if (error instanceof Error) {
+            throw Error(`Invalid URL: ${error.message}`);
+        }
+        throw Error("Couldn't parse URL");
+    }
+
+    if (!ALLOWED_HTTP_PROTOCOLS.has(parsedUrl.protocol)) {
+        throw Error('URL protocol must be http or https');
+    }
+
+    if (!parsedUrl.hostname) {
+        throw Error('URL must include a hostname');
+    }
+
+    return parsedUrl;
 }

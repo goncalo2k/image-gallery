@@ -5,7 +5,7 @@ import type { Image } from "../models/image";
 import type { ImageUploadFileRequest, ImageUploadUrlRequest } from "../models/image-requests";
 import type { DeleteResponse, ImageAuditLogsResponse, ImageListResponse, UploadResponse } from "../models/image-responses";
 import type { ImageMapper } from "../utils/image-mapper";
-import { allowedImageMimeTypesList, bufferToStream, BYTES_PER_MB, getPaginationParams, isAllowedImageContentType, isValidImageName, normalizeContentType, parseErrorMessage } from "../utils/utils";
+import { allowedImageMimeTypesList, bufferToStream, BYTES_PER_MB, getPaginationParams, isAllowedImageContentType, isValidImageName, normalizeContentType, parseErrorMessage, parseHttpUrl } from "../utils/utils";
 
 
 
@@ -245,15 +245,7 @@ export class ImageService {
     }
 
     private async fetchExternalImage(request: ImageUploadUrlRequest): Promise<File> {
-        let url;
-        try {
-            url = new URL(request.fileUrl);
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                throw Error(`Invalid URL: ${error.message}`);
-            }
-            throw Error("Couldn't parse URL from body");
-        }
+        const url = parseHttpUrl(request.fileUrl);
 
         const response = await fetch(url, {
             redirect: 'follow'
