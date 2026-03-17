@@ -71,7 +71,7 @@ export class ImageService {
             const fallbackName = body.file.name;
             const imageNameSource = preferredName ?? fallbackName;
             if (!imageNameSource || !isValidImageName(imageNameSource)) {
-                return { errorMessage: 'Invalid file name format', status: 400 };
+                return { errorMessage: 'Invalid file name format: File names should only include characters from a to z, numbers, the space character, underscores and hyphens, followed by a dot and a file extension', status: 400 };
             }
             imageName = imageNameSource.toLowerCase();
 
@@ -230,7 +230,7 @@ export class ImageService {
 
     private async getImageMetadataByName(ANALOGS_METADATA_DB: D1Database, name: string): Promise<Partial<Image> | undefined> {
         if (!isValidImageName(name)) {
-            throw new Error("Invalid file name format");
+            throw new Error("Invalid file name format: File names should only include characters from a to z, numbers, the space character, underscores and hyphens, followed by a dot and a file extension");
         }
 
         const descriptionResult = await ANALOGS_METADATA_DB.prepare('SELECT id, description, created_at, content_type FROM images WHERE name = ? LIMIT 1').bind(name).first();
@@ -265,7 +265,7 @@ export class ImageService {
         const fallbackName = crypto.randomUUID();
         const fileName = providedName ?? fallbackName;
         if (!isValidImageName(fileName)) {
-            throw Error('Invalid file name format');
+            throw Error('Invalid file name format: File names should only include characters from a to z, numbers, the space character, underscores and hyphens, followed by a dot and a file extension');
         }
         const blob = await response.blob();
 

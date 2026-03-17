@@ -1,0 +1,915 @@
+{
+  "info": {
+    "_postman_id": "25d59284-f09d-4fa5-8f4f-c426cf78f5fb",
+    "name": "CF Assignment",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Swagger",
+      "id": "0201aea7-b404-4f26-a2d9-9b47965db405",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "/Users/goncalomiranda/Desktop/analogs/CNV000004.jpeg"
+            },
+            {
+              "key": "name",
+              "value": "beach",
+              "type": "text",
+              "disabled": true
+            },
+            {
+              "key": "description",
+              "value": "A beautiful beach landscape.",
+              "type": "text",
+              "disabled": true
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{API_URL}}/docs",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "docs"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8787/upload \\\n  -F \"file=@/path/to/image.jpg\" \\\n  -F \"description=A beautiful landscape\" \\\n  -F \"tags=nature,landscape\""
+      },
+      "response": []
+    },
+    {
+      "name": "Get OpenAPI Docs",
+      "id": "459e8e7c-a026-4c8e-857a-a56207e5d088",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "/Users/goncalomiranda/Desktop/analogs/CNV000004.jpeg"
+            },
+            {
+              "key": "name",
+              "value": "beach",
+              "type": "text",
+              "disabled": true
+            },
+            {
+              "key": "description",
+              "value": "A beautiful beach landscape.",
+              "type": "text",
+              "disabled": true
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{API_URL}}/openapi.json",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "openapi.json"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8787/upload \\\n  -F \"file=@/path/to/image.jpg\" \\\n  -F \"description=A beautiful landscape\" \\\n  -F \"tags=nature,landscape\""
+      },
+      "response": []
+    },
+    {
+      "name": "Get Image (by id)",
+      "id": "f0552b69-b34e-4e04-b077-b1abd1e753e0",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{API_URL}}/images/aadf31ac-1fcf-46cd-8b07-a7743a7b7fb9",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "images",
+            "aadf31ac-1fcf-46cd-8b07-a7743a7b7fb9"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Images",
+      "id": "508c835e-cf50-4f83-9a4e-3ba5d205212d",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "CF-Access-Client-Id",
+            "value": "{{CLIENT_ID}}",
+            "type": "text"
+          },
+          {
+            "key": "CF-Access-Client-Secret",
+            "value": "{{CLIENT_SECRET}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{API_URL}}/images",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "images"
+          ]
+        }
+      },
+      "response": [
+        {
+          "id": "28b0214c-61cd-4d58-a7b7-4ef048877f68",
+          "name": "Success",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "CF-Access-Client-Id",
+                "value": "{{CLIENT_ID}}",
+                "type": "text"
+              },
+              {
+                "key": "CF-Access-Client-Secret",
+                "value": "{{CLIENT_SECRET}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/images",
+              "host": [
+                "{{API_URL}}"
+              ],
+              "path": [
+                "images"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; img-src 'self' data: https:;"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Correlation-Id",
+              "value": "24f568f0-80b3-45f4-91a2-dc613e32da35"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"data\": [\n        {\n            \"id\": \"aadf31ac-1fcf-46cd-8b07-a7743a7b7fb9\",\n            \"name\": \"img_7604.jpg\",\n            \"description\": \" A stream of water with rocks and a fallen tree branch in the middle.\",\n            \"contentType\": \"image/jpeg\",\n            \"createdAt\": \"2026-03-17 15:57:38\"\n        },\n        {\n            \"id\": \"7870b069-c103-448d-9bb8-c55260115fe4\",\n            \"name\": \"a8efa9b3-0e82-41e6-8002-c2a03bb28d5c\",\n            \"description\": \" A tree with a large trunk and a small opening in the middle of it.\",\n            \"contentType\": \"image/jpeg\",\n            \"createdAt\": \"2026-03-17 15:56:26\"\n        },\n        {\n            \"id\": \"84e09610-a2db-4d4e-81fc-22665ca9af96\",\n            \"name\": \"img_7580.jpg\",\n            \"description\": \" A wall with a green background and the word Eldodhsa written in white.\",\n            \"contentType\": \"image/jpeg\",\n            \"createdAt\": \"2026-03-17 15:53:54\"\n        },\n        {\n            \"id\": \"1f1298d4-b270-4f7c-b8bb-6b6164b0e3fe\",\n            \"name\": \"cnv000021.jpeg\",\n            \"description\": \" Two chairs sit under a yellow umbrella, providing shade and comfort for those who wish to relax by the water.\",\n            \"contentType\": \"image/jpeg\",\n            \"createdAt\": \"2026-03-17 15:53:05\"\n        },\n        {\n            \"id\": \"e8b139a5-3835-4106-9638-18ec3fbcde80\",\n            \"name\": \"000029.jpg\",\n            \"description\": \" A sunset over the ocean with a silhouette of a person standing on the beach.\",\n            \"contentType\": \"image/jpeg\",\n            \"createdAt\": \"2026-03-17 15:52:51\"\n        },\n        {\n            \"id\": \"784201c9-8e3b-47e0-a7cf-d7c114c3a720\",\n            \"name\": \"000074_1.jpg\",\n            \"description\": \" A Ferris wheel with a large wheel in the center and two smaller wheels on top.\",\n            \"contentType\": \"image/jpeg\",\n            \"createdAt\": \"2026-03-17 15:50:06\"\n        }\n    ],\n    \"count\": 6,\n    \"offset\": 0,\n    \"limit\": 20,\n    \"total\": 6\n}"
+        }
+      ]
+    },
+    {
+      "name": "Delete Image (by id)",
+      "id": "eab9f9cb-4dd2-448d-85f2-c0b7241a1045",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "CF-Access-Client-Id",
+            "value": "{{CLIENT_ID}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "CF-Access-Client-Secret",
+            "value": "{{CLIENT_SECRET}}",
+            "type": "text",
+            "disabled": true
+          },
+          {
+            "key": "",
+            "value": "",
+            "type": "text",
+            "disabled": true
+          }
+        ],
+        "url": {
+          "raw": "{{API_URL}}/images/ee294ce7-46d3-464a-a816-b7202f92b7df",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "images",
+            "ee294ce7-46d3-464a-a816-b7202f92b7df"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Audit",
+      "id": "bea3fed0-dfc5-41e5-a2ad-fbf4f4374a5d",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "CF-Access-Client-Id",
+            "value": "{{CLIENT_ID}}",
+            "type": "text"
+          },
+          {
+            "key": "CF-Access-Client-Secret",
+            "value": "{{CLIENT_SECRET}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{API_URL}}/images/audit",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "images",
+            "audit"
+          ]
+        }
+      },
+      "response": [
+        {
+          "id": "c12bf57b-a827-4c81-8c03-dbc691d48b9a",
+          "name": "Success (Authenticated)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "CF-Access-Client-Id",
+                "value": "{{CLIENT_ID}}",
+                "type": "text"
+              },
+              {
+                "key": "CF-Access-Client-Secret",
+                "value": "{{CLIENT_SECRET}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/images/audit",
+              "host": [
+                "{{API_URL}}"
+              ],
+              "path": [
+                "images",
+                "audit"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; img-src 'self' data: https:;"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Correlation-Id",
+              "value": "d73ba4b3-1c8f-4ee9-a8d6-caddc5aed120"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"data\": {\n        \"data\": {\n            \"recentUploads\": [\n                {\n                    \"id\": \"84e09610-a2db-4d4e-81fc-22665ca9af96\",\n                    \"name\": \"img_7580.jpg\",\n                    \"description\": \" A wall with a green background and the word Eldodhsa written in white.\",\n                    \"contentType\": \"image/jpeg\",\n                    \"createdAt\": \"2026-03-17 15:53:54\"\n                },\n                {\n                    \"id\": \"1f1298d4-b270-4f7c-b8bb-6b6164b0e3fe\",\n                    \"name\": \"cnv000021.jpeg\",\n                    \"description\": \" Two chairs sit under a yellow umbrella, providing shade and comfort for those who wish to relax by the water.\",\n                    \"contentType\": \"image/jpeg\",\n                    \"createdAt\": \"2026-03-17 15:53:05\"\n                },\n                {\n                    \"id\": \"e8b139a5-3835-4106-9638-18ec3fbcde80\",\n                    \"name\": \"000029.jpg\",\n                    \"description\": \" A sunset over the ocean with a silhouette of a person standing on the beach.\",\n                    \"contentType\": \"image/jpeg\",\n                    \"createdAt\": \"2026-03-17 15:52:51\"\n                },\n                {\n                    \"id\": \"784201c9-8e3b-47e0-a7cf-d7c114c3a720\",\n                    \"name\": \"000074_1.jpg\",\n                    \"description\": \" A Ferris wheel with a large wheel in the center and two smaller wheels on top.\",\n                    \"contentType\": \"image/jpeg\",\n                    \"createdAt\": \"2026-03-17 15:50:06\"\n                }\n            ],\n            \"statistics\": {\n                \"totalImages\": 4,\n                \"lastUpdated\": \"2026-03-17 15:53:54\"\n            }\n        },\n        \"count\": 4,\n        \"offset\": 0,\n        \"limit\": 20,\n        \"total\": 4\n    }\n}"
+        },
+        {
+          "id": "872419f4-72bd-4d3d-af40-69d133ff10a7",
+          "name": "Failure (Unauthorized)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "CF-Access-Client-Id",
+                "value": "{{CLIENT_ID}}",
+                "type": "text",
+                "disabled": true
+              },
+              {
+                "key": "CF-Access-Client-Secret",
+                "value": "{{CLIENT_SECRET}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/images/audit",
+              "host": [
+                "{{API_URL}}"
+              ],
+              "path": [
+                "images",
+                "audit"
+              ]
+            }
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "X-Correlation-Id",
+              "value": "99f3d8f2-5a20-42dc-8121-a94ab5c98123"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"errorMessage\": \"Unauthorized\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Upload from File",
+      "id": "7c1c1f83-3554-4c3f-8e0c-aa11bda78f33",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "name",
+              "value": "beach",
+              "type": "text",
+              "disabled": true
+            },
+            {
+              "key": "description",
+              "value": "A beautiful beach landscape.",
+              "type": "text",
+              "disabled": true
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{API_URL}}/images",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "images"
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8787/upload \\\n  -F \"file=@/path/to/image.jpg\" \\\n  -F \"description=A beautiful landscape\" \\\n  -F \"tags=nature,landscape\""
+      },
+      "response": [
+        {
+          "id": "f5deb596-3bdd-45f1-9e00-bbf1403a5a40",
+          "name": "Failure (Invalid File Type)",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/Users/goncalomiranda/Desktop/tese misc/SOTA_Goncalo_Miranda.pdf"
+                },
+                {
+                  "key": "name",
+                  "value": "beach",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "description",
+                  "value": "A beautiful beach landscape.",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{API_URL}}/images",
+              "host": [
+                "{{API_URL}}"
+              ],
+              "path": [
+                "images"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; img-src 'self' data: https:;"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Correlation-Id",
+              "value": "3e69c331-bae9-4c7f-85c3-8d314f80ea4b"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"errorMessage\": \"Unsupported image MIME type. Allowed types: image/png, image/jpeg, image/webp, image/gif, image/svg+xml, image/avif\",\n    \"status\": 400\n}"
+        },
+        {
+          "id": "1b48b1a1-0578-46f5-ac8b-febee7a8596b",
+          "name": "Failure (Invalid File Name)",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/Users/goncalomiranda/Desktop/projects/tese/thesis/research/scripts/zotero_files/Scopus/Snowballing/Rios et al. - Causes and Effects of the Presence of Technical Debt in Agile Sof.pdf"
+                },
+                {
+                  "key": "name",
+                  "value": "beach",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "description",
+                  "value": "A beautiful beach landscape.",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{API_URL}}/images",
+              "host": [
+                "{{API_URL}}"
+              ],
+              "path": [
+                "images"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; img-src 'self' data: https:;"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Correlation-Id",
+              "value": "e4fc18b0-18af-40b3-a6f9-cc8938e7d2d8"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"errorMessage\": \"Invalid file name format\",\n    \"status\": 400\n}"
+        },
+        {
+          "id": "eff5a49e-0a41-4346-b925-337c35ff1a16",
+          "name": "Success (File already uploaded)",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/Users/goncalomiranda/Desktop/analogs/CNV000021.jpeg"
+                },
+                {
+                  "key": "name",
+                  "value": "beach",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "description",
+                  "value": "A beautiful beach landscape.",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{API_URL}}/images",
+              "host": [
+                "{{API_URL}}"
+              ],
+              "path": [
+                "images"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; img-src 'self' data: https:;"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Correlation-Id",
+              "value": "ac05a109-3b29-4889-bec4-81de9458f05d"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"data\": {\n        \"description\": \" Two chairs sit under a yellow umbrella, providing shade and comfort for those who wish to relax by the water.\",\n        \"name\": \"cnv000021.jpeg\",\n        \"createdAt\": \"2026-03-17 15:53:05\",\n        \"id\": \"1f1298d4-b270-4f7c-b8bb-6b6164b0e3fe\"\n    },\n    \"status\": 200\n}"
+        },
+        {
+          "id": "c4c4fa4c-4793-41b2-9f08-4eb35ac0ee18",
+          "name": "Success (First Upload)",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/Users/goncalomiranda/Desktop/analogs/IMG_7580.JPG"
+                },
+                {
+                  "key": "name",
+                  "value": "beach",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "description",
+                  "value": "A beautiful beach landscape.",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{API_URL}}/images",
+              "host": [
+                "{{API_URL}}"
+              ],
+              "path": [
+                "images"
+              ]
+            }
+          },
+          "status": "Accepted",
+          "code": 202,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; img-src 'self' data: https:;"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Correlation-Id",
+              "value": "5798be6c-b4ad-4d49-9674-f085d2bc4f0f"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"data\": {\n        \"id\": \"84e09610-a2db-4d4e-81fc-22665ca9af96\",\n        \"name\": \"img_7580.jpg\",\n        \"description\": \" A wall with a green background and the word Eldodhsa written in white.\",\n        \"contentType\": \"image/jpeg\"\n    },\n    \"status\": 202\n}"
+        }
+      ]
+    },
+    {
+      "name": "Upload from Remote",
+      "id": "ea3bc5a7-f50f-4a03-be28-57e06c79f677",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "fileUrl",
+              "value": "https://picsum.photos/200/300",
+              "type": "text"
+            },
+            {
+              "key": "name",
+              "value": "beach",
+              "type": "text",
+              "disabled": true
+            },
+            {
+              "key": "description",
+              "value": "A beautiful beach landscape.",
+              "type": "text",
+              "disabled": true
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{API_URL}}/images/external",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "images",
+            "external"
+          ],
+          "query": [
+            {
+              "key": "",
+              "value": null,
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Generated from cURL: curl -X POST http://localhost:8787/upload \\\n  -F \"file=@/path/to/image.jpg\" \\\n  -F \"description=A beautiful landscape\" \\\n  -F \"tags=nature,landscape\""
+      },
+      "response": [
+        {
+          "id": "3dfd4567-bcf3-4f0c-8556-3ab698f937c2",
+          "name": "Upload from Remote",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fileUrl",
+                  "value": "https://picsum.photos/200/300",
+                  "type": "text"
+                },
+                {
+                  "key": "name",
+                  "value": "beach",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "description",
+                  "value": "A beautiful beach landscape.",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{API_URL}}/images/external",
+              "host": [
+                "{{API_URL}}"
+              ],
+              "path": [
+                "images",
+                "external"
+              ],
+              "query": [
+                {
+                  "key": "",
+                  "value": null,
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "status": "Accepted",
+          "code": 202,
+          "_postman_previewlanguage": "",
+          "header": [
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; img-src 'self' data: https:;"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Correlation-Id",
+              "value": "3dc3366f-abe8-4e01-900f-b154f009ea6f"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"data\": {\n        \"id\": \"7870b069-c103-448d-9bb8-c55260115fe4\",\n        \"name\": \"a8efa9b3-0e82-41e6-8002-c2a03bb28d5c\",\n        \"description\": \" A tree with a large trunk and a small opening in the middle of it.\",\n        \"contentType\": \"image/jpeg\"\n    },\n    \"status\": 202\n}"
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "id": "b04c2be1-1065-4b4f-a55e-b4a5ce19a2ab",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{API_URL}}/health",
+          "host": [
+            "{{API_URL}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

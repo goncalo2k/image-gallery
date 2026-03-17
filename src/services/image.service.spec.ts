@@ -310,7 +310,7 @@ describe('ImageService validation', () => {
     } as ImageUploadFileRequest;
 
     const response = await service.uploadImage(ctx, body);
-    expect(response).toEqual({ errorMessage: 'Invalid file name format', status: 400 });
+    expect(response).toEqual({ errorMessage: 'Invalid file name format: File names should only include characters from a to z, numbers, the space character, underscores and hyphens, followed by a dot and a file extension', status: 400 });
   });
 
   it('flags missing file uploads', async () => {

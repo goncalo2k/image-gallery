@@ -290,7 +290,7 @@ describe('ImageController', () => {
     const formData = new FormData();
     const mappedRequest = { file: new File(['body'], 'test.png', { type: 'image/png' }) };
     (mapperMocks.mapFormDataToImageUploadFileRequest as Mock).mockReturnValue(mappedRequest);
-    (serviceMocks.uploadImage as Mock).mockResolvedValue({ errorMessage: 'Invalid file name format', status: 400 });
+    (serviceMocks.uploadImage as Mock).mockResolvedValue({ errorMessage: 'Invalid file name format: File names should only include characters from a to z, numbers, the space character, underscores and hyphens, followed by a dot and a file extension', status: 400 });
 
     const { ctx, jsonSpy } = createContext({
       req: {
@@ -300,7 +300,7 @@ describe('ImageController', () => {
 
     const response = await controller.uploadImage(ctx);
 
-    expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: 'Invalid file name format', status: 400 }, 400);
-    expect(response).toEqual({ body: { errorMessage: 'Invalid file name format', status: 400 }, status: 400 });
+    expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: 'Invalid file name format: File names should only include characters from a to z, numbers, the space character, underscores and hyphens, followed by a dot and a file extension', status: 400 }, 400);
+    expect(response).toEqual({ body: { errorMessage: 'Invalid file name format: File names should only include characters from a to z, numbers, the space character, underscores and hyphens, followed by a dot and a file extension', status: 400 }, status: 400 });
   });
 });
