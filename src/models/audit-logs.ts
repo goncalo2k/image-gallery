@@ -7,5 +7,6 @@ export interface ImageAuditLogs {
 
 export interface Statistics {
     totalImages: number;
+    totalSizeBytes: number;
     lastUpdated?: string;
 }

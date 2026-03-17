@@ -121,7 +121,7 @@ describe('ImageController', () => {
     const { mapper, mocks: _mapperMocks } = createMapperMock();
     const controller = new ImageController(service, mapper);
     const { ctx, jsonSpy } = createContext();
-    const auditData = { recentUploads: [], statistics: { totalImages: 0, lastUpdated: new Date().toISOString() } };
+    const auditData = { recentUploads: [], statistics: { totalImages: 0, totalSizeBytes: 0, lastUpdated: new Date().toISOString() } };
     (serviceMocks.getImagesAuditLogs as Mock).mockResolvedValue(auditData);
 
     const response = await controller.getImagesAudit(ctx);

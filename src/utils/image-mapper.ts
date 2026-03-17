@@ -8,7 +8,8 @@ export class ImageMapper {
             id: row.id,
             name: row.name,
             description: row.description,
-            contentType: row.content_typ,
+            contentType: row.content_type,
+            size: row.size,
             createdAt: row.created_at,
         } as Partial<Image>
     }
@@ -38,13 +39,19 @@ export class ImageMapper {
             name: imageName,
             description: imageDescription,
             contentType: imageRequest.file.type,
+            size: imageRequest.file.size,
             file: imageRequest.file,
         } as Image;
     }
 
     mapImageToPartialImage(image: Image): Partial<Image> {
         return {
-            id: image.id, name: image.name, description: image.description, contentType: image.contentType, createdAt: image.createdAt
+            id: image.id,
+            name: image.name,
+            description: image.description,
+            contentType: image.contentType,
+            size: image.size,
+            createdAt: image.createdAt
         } as Partial<Image>;
     }
 }

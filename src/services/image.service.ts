@@ -20,7 +20,7 @@ export class ImageService {
         const total = Number(countResponse?.total);
 
         const response = await c.env.ANALOGS_METADATA_DB.prepare(
-            'SELECT id, name, description, content_type, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
+            'SELECT id, name, description, content_type, size, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
         ).bind(limit, offset).run();
 
         if (!response.results) {
@@ -39,17 +39,18 @@ export class ImageService {
             return undefined;
         }
 
-        const metadataResult = await ANALOGS_METADATA_DB.prepare('SELECT name, description, created_at FROM images WHERE id = ? LIMIT 1').bind(id).first();
+        const metadataResult = await ANALOGS_METADATA_DB.prepare('SELECT name, description, size, created_at FROM images WHERE id = ? LIMIT 1').bind(id).first();
         const createdAt = metadataResult?.created_at as string;
         const description = metadataResult?.description as string;
         const name = metadataResult?.name as string;
+        const size = Number(metadataResult?.size);
         if (!description || !createdAt) {
             return undefined;
         }
 
         const contentType = object.httpMetadata?.contentType;
         const file = new File([await object.blob()], name, { type: contentType });
-        return { id, file: file, description, name, contentType, createdAt } as Image;
+        return { id, file: file, description, name, contentType, createdAt, size: size } as Image;
     }
 
     async uploadImage(c: AppContext, body: ImageUploadFileRequest): Promise<UploadResponse> {
@@ -112,7 +113,7 @@ export class ImageService {
             const image = this.mapperService.mapImageMetadataToImage(body, imageName, id, finalDescription);
             c.executionCtx.waitUntil(
                 this.uploadImageMetadata(c.env.ANALOGS_METADATA_DB, image)
-                    .then(result => {
+                    .then(async (result) => {
                         if (!result) {
                             // Clean up blob if metadata upload fails
                             if (isBlobUploaded) {
@@ -120,6 +121,12 @@ export class ImageService {
                                     console.error('Cleanup failed:', cleanupError);
                                 });
                             }
+                            return;
+                        }
+                        try {
+                            await this.updateImageStats(c.env.ANALOGS_METADATA_DB, 1, image.size ?? body.file.size ?? 0);
+                        } catch (statsError) {
+                            console.error('Failed to update image stats:', statsError);
                         }
                     })
                     .catch((error: unknown) => {
@@ -156,28 +163,22 @@ export class ImageService {
         const { offset, limit } = getPaginationParams(c);
 
         const metadataPromise = c.env.ANALOGS_METADATA_DB.prepare(
-            'SELECT id, name, description, content_type, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
+            'SELECT id, name, description, content_type, size, created_at FROM images ORDER BY created_at DESC LIMIT ? OFFSET ?'
         ).bind(limit, offset).run();
 
-        const countPromise = c.env.ANALOGS_METADATA_DB.prepare(
-            'SELECT COUNT(*) as total FROM images'
-        ).first();
+        const statsPromise = this.getImageStats(c.env.ANALOGS_METADATA_DB);
 
-        const [metadataResult, countResult] = await Promise.allSettled([metadataPromise, countPromise]);
-
-        if (countResult.status !== 'fulfilled') {
-            throw Error("Couldn't get number of images stored in D1");
-        }
+        const [metadataResult, statsResult] = await Promise.allSettled([metadataPromise, statsPromise]);
 
         if (metadataResult.status !== 'fulfilled' || !metadataResult.value.results) {
             throw Error("Couldn't list all metadata entries from D1");
         }
 
-        if (!countResult.value) {
+        if (statsResult.status !== 'fulfilled') {
             throw Error("Couldn't get total number of images uploaded.");
         }
 
-        const total = Number(countResult.value?.total);
+        const { totalImages, totalSize } = statsResult.value;
 
         const recentUploads: Partial<Image>[] = metadataResult.value.results.map((row) => this.mapperService.mapRowToPartialImage(row));
 
@@ -185,24 +186,37 @@ export class ImageService {
             data: {
                 recentUploads,
                 statistics: {
-                    totalImages: total,
+                    totalImages,
+                    totalSizeBytes: totalSize,
                     lastUpdated: recentUploads.length > 0 ? recentUploads[0].createdAt : undefined
                 }
             },
             count: recentUploads.length,
             offset,
             limit,
-            total
+            total: totalImages
         };
     }
 
     async deleteImage(c: AppContext, id: string): Promise<DeleteResponse> {
+        const existingMetadata = await c.env.ANALOGS_METADATA_DB.prepare('SELECT size FROM images WHERE id = ? LIMIT 1').bind(id).first();
+        const size = Number(existingMetadata?.size ?? 0);
+
         const [blobResult, metadataResult] = await Promise.allSettled([
             this.deleteImageBlob(c.env.ANALOGS_BUCKET, id),
             this.deleteImageMetadata(c.env.ANALOGS_METADATA_DB, id)
-        ])
+        ]);
 
-        return { status: blobResult.status === 'fulfilled' && metadataResult.status === 'fulfilled' && metadataResult.value.meta.changed_db && metadataResult.value.success ? 200 : 500 }
+        const success = blobResult.status === 'fulfilled'
+            && metadataResult.status === 'fulfilled'
+            && metadataResult.value.meta.changed_db
+            && metadataResult.value.success;
+
+        if (success && existingMetadata) {
+            await this.updateImageStats(c.env.ANALOGS_METADATA_DB, -1, - (Number.isNaN(size) ? 0 : size));
+        }
+
+        return { status: success ? 200 : 500 };
     }
 
     private async getImageMetadataByName(ANALOGS_METADATA_DB: D1Database, name: string): Promise<Partial<Image> | undefined> {
@@ -210,15 +224,16 @@ export class ImageService {
             throw new Error("Invalid file name format");
         }
 
-        const descriptionResult = await ANALOGS_METADATA_DB.prepare('SELECT id, description, created_at FROM images WHERE name = ? LIMIT 1').bind(name).first();
+        const descriptionResult = await ANALOGS_METADATA_DB.prepare('SELECT id, description, size, created_at FROM images WHERE name = ? LIMIT 1').bind(name).first();
         const createdAt = descriptionResult?.created_at as string;
         const description = descriptionResult?.description as string;
         const id = descriptionResult?.id as string;
+        const size = Number(descriptionResult?.size);
         if (!description || !createdAt) {
             return undefined;
         }
 
-        return { /* file: file, */ description, name/* , contentType */, createdAt, id } as Image;
+        return { description, name, createdAt, id, size: Number.isNaN(size) ? undefined : size } as Image;
     }
 
     private async fetchExternalImage(request: ImageUploadUrlRequest): Promise<File> {
@@ -257,8 +272,8 @@ export class ImageService {
     }
 
     private async uploadImageMetadata(ANALOGS_METADATA_DB: D1Database, image: Image): Promise<boolean> {
-        const result = await ANALOGS_METADATA_DB.prepare("INSERT INTO images (id, name, description, content_type) VALUES (?, ?, ?, ?)")
-            .bind(image.id, image.name, image.description, image.contentType)
+        const result = await ANALOGS_METADATA_DB.prepare("INSERT INTO images (id, name, description, content_type, size) VALUES (?, ?, ?, ?, ?)")
+            .bind(image.id, image.name, image.description, image.contentType, image.size ?? 0)
             .run();
         if (!result.success || result.meta.rows_written === 0) {
             throw Error('Insert query to D1 failed');
@@ -332,5 +347,27 @@ export class ImageService {
             console.warn('Image resizing for AI failed, falling back to original buffer', error);
             return fileBuffer;
         }
+    }
+
+    private async ensureStatsRow(ANALOGS_METADATA_DB: D1Database): Promise<void> {
+        await ANALOGS_METADATA_DB.prepare("INSERT INTO ImageStats (bucket, total_images, total_size) VALUES ('global', 0, 0) ON CONFLICT(bucket) DO NOTHING").run();
+    }
+
+    private async updateImageStats(ANALOGS_METADATA_DB: D1Database, deltaImages: number, deltaSize: number): Promise<void> {
+        await this.ensureStatsRow(ANALOGS_METADATA_DB);
+        await ANALOGS_METADATA_DB.prepare("UPDATE ImageStats SET total_images = MAX(total_images + ?, 0), total_size = MAX(total_size + ?, 0) WHERE bucket = 'global'")
+            .bind(deltaImages, deltaSize)
+            .run();
+    }
+
+    private async getImageStats(ANALOGS_METADATA_DB: D1Database): Promise<{ totalImages: number; totalSize: number }> {
+        await this.ensureStatsRow(ANALOGS_METADATA_DB);
+        const statsRow = await ANALOGS_METADATA_DB.prepare("SELECT total_images, total_size FROM ImageStats WHERE bucket = 'global'").first();
+        const totalImages = Number(statsRow?.total_images ?? 0);
+        const totalSize = Number(statsRow?.total_size ?? 0);
+        return {
+            totalImages: Number.isNaN(totalImages) ? 0 : totalImages,
+            totalSize: Number.isNaN(totalSize) ? 0 : totalSize,
+        };
     }
 }

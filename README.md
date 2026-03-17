@@ -45,11 +45,25 @@ Edge-native image ingestion and metadata API built for Cloudflare Workers. Binar
 DROP TABLE IF EXISTS Images;
 
 CREATE TABLE IF NOT EXISTS Images (
-  name TEXT PRIMARY KEY,
+  id TEXT PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
   description TEXT NOT NULL,
   content_type TEXT,
+  size INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS NameIndex ON Images (name);
+
+CREATE TABLE IF NOT EXISTS ImageStats (
+  bucket TEXT PRIMARY KEY DEFAULT 'global',
+  total_images INTEGER NOT NULL DEFAULT 0,
+  total_size INTEGER NOT NULL DEFAULT 0
+);
+
+INSERT INTO ImageStats (bucket, total_images, total_size)
+SELECT 'global', 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM ImageStats WHERE bucket = 'global');
 ```
 
 ## API surface
@@ -60,11 +74,11 @@ CREATE TABLE IF NOT EXISTS Images (
 | GET | `/docs` | Swagger UI backed by the generated OpenAPI file (public, CSP relaxed). |
 | GET | `/openapi.json` | Runtime OpenAPI 3.1 document with host patched from the current request. |
 | GET | `/images` | Paginated metadata list (`offset`, `limit`) with total count. |
-| GET | `/images/audit` | Recent upload summaries plus aggregate stats (total images, last updated). |
-| GET | `/images/:name` | Streams a validated image, sets `Content-Type`, `Cache-Control`, `ETag`, `Accept-Ranges`, and `ALT_HEADER_NAME` (alt text). |
-| POST | `/images` | Multipart upload. Validates filename + max size, deduplicates by hash via `getImageByName`, and optionally generates alt text. |
+| GET | `/images/audit` | Recent upload summaries plus aggregate stats (total images, total bytes stored, last updated). |
+| GET | `/images/:id` | Streams a validated image, sets `Content-Type`, `Cache-Control`, `ETag`, `Accept-Ranges`, and `ALT_HEADER_NAME` (alt text). |
+| POST | `/images` | Multipart upload. Validates filename + max size, deduplicates by image name, and optionally generates alt text. |
 | POST | `/images/external` | Accepts `{ fileUrl, name?, description? }`, downloads the remote image, sanitizes metadata, and reuses the shared upload path. |
-| DELETE | `/images/:name` | Removes blob + metadata in one request; returns `200` when both succeed. |
+| DELETE | `/images/:id` | Removes blob + metadata in one request; returns `200` when both succeed. |
 
 ## Key modules
 
