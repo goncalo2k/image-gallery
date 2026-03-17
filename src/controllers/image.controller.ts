@@ -32,7 +32,7 @@ export class ImageController {
     }
 
     async getImage(c: AppContext): Promise<Response> {
-        const match = await caches.default.match(c.req.raw);
+        const match = await caches.default.match(c.req.raw.url);
         if (match) { return match; }
         const id = String(c.req.param('id'));
         try {
@@ -56,7 +56,7 @@ export class ImageController {
             });
             try {
                 c.executionCtx.waitUntil(
-                    caches.default.put(c.req.raw, response.clone()).catch((cacheError: unknown) => {
+                    caches.default.put(c.req.raw.url, response.clone()).catch((cacheError: unknown) => {
                         console.warn('Failed to cache image:', cacheError);
                     })
                 );
