@@ -4,5 +4,6 @@ export interface Image {
     createdAt?: string;
     description: string;
     contentType: string;
+    size: number;
     file: File;
 }

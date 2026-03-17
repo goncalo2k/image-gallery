@@ -29,6 +29,8 @@ interface DatabaseMockOptions {
   metadataRejects?: boolean;
   countRejects?: boolean;
   metadataResults?: { results?: Record<string, unknown>[] } | null;
+  statsRejects?: boolean;
+  bytesStored?: number;
 }
 
 const createDatabaseMock = (rows: Record<string, unknown>[], options?: DatabaseMockOptions): D1Database => {
@@ -55,10 +57,26 @@ const createDatabaseMock = (rows: Record<string, unknown>[], options?: DatabaseM
       first: vi.fn().mockResolvedValue({ total: totalValue }),
     } as unknown as D1PreparedStatement);
 
+  const statsFirst = options?.statsRejects
+    ? vi.fn().mockRejectedValue(new Error('stats failed'))
+    : vi.fn().mockResolvedValue({ value: options?.bytesStored ?? 0 });
+
+  const statsStatement = {
+    bind: vi.fn(() => ({
+      first: statsFirst,
+    })),
+    first: statsFirst,
+  } as unknown as D1PreparedStatement;
+
   return {
     prepare: vi.fn((sql: string) => {
-      if (sql.toLowerCase().includes('count')) {
+      const normalized = sql.toLowerCase();
+      if (normalized.includes('count')) {
         return countStatement;
+      }
+
+      if (normalized.includes('image_stats')) {
+        return statsStatement;
       }
 
       return metadataStatement;
@@ -107,6 +125,7 @@ describe('ImageService.getImagesMetadata', () => {
       description: faker.lorem.sentence(),
       content_type: 'image/png',
       created_at: faker.date.recent().toISOString(),
+      size: faker.number.int({ min: 1_000, max: 5_000 }),
     };
     const total = faker.number.int({ min: 10, max: 50 });
     const db = createDatabaseMock([row], { total });
@@ -117,6 +136,7 @@ describe('ImageService.getImagesMetadata', () => {
       description: 'mapped-description',
       contentType: 'mapped/type',
       createdAt: '2024-01-01T00:00:00.000Z',
+      size: row.size,
     };
     const mapperSpy = vi.spyOn(mapper, 'mapRowToPartialImage').mockReturnValue(mappedRow);
 
@@ -175,9 +195,11 @@ describe('ImageService.getImagesAuditLogs', () => {
       description: faker.lorem.words(3),
       content_type: 'image/jpeg',
       created_at: faker.date.recent().toISOString(),
+      size: faker.number.int({ min: 10_000, max: 25_000 }),
     }));
     const totalImages = faker.number.int({ min: 20, max: 80 });
-    const db = createDatabaseMock(rows, { total: totalImages });
+    const bytesStored = rows.reduce((sum, row) => sum + row.size, 0);
+    const db = createDatabaseMock(rows, { total: totalImages, bytesStored });
     const ctx = createMockContext({ query: { offset: '0', limit: '200' }, db });
     const service = new ImageService(mapper);
     const mapperSpy = vi.spyOn(mapper, 'mapRowToPartialImage').mockImplementation((row) => ({
@@ -185,6 +207,7 @@ describe('ImageService.getImagesAuditLogs', () => {
       description: row.description as string,
       contentType: (row as { content_type: string }).content_type,
       createdAt: (row as { created_at: string }).created_at,
+      size: (row as { size: number }).size,
     }));
 
     const response = await service.getImagesAuditLogs(ctx);
@@ -196,16 +219,19 @@ describe('ImageService.getImagesAuditLogs', () => {
           description: rows[0].description,
           contentType: rows[0].content_type,
           createdAt: rows[0].created_at,
+          size: rows[0].size,
         },
         {
           name: rows[1].name,
           description: rows[1].description,
           contentType: rows[1].content_type,
           createdAt: rows[1].created_at,
+          size: rows[1].size,
         },
       ],
       statistics: {
         totalImages,
+        bytesStored,
         lastUpdated: expect.any(String),
       },
     });
@@ -242,6 +268,15 @@ describe('ImageService.getImagesAuditLogs', () => {
     await expect(service.getImagesAuditLogs(ctx)).rejects.toThrow("Couldn't get number of images stored in D1");
   });
 
+  it('throws when stats query fails', async () => {
+    const rows = [{ name: 'stats-failure' }];
+    const db = createDatabaseMock(rows, { statsRejects: true });
+    const ctx = createMockContext({ db });
+    const service = new ImageService(mapper);
+
+    await expect(service.getImagesAuditLogs(ctx)).rejects.toThrow("Couldn't get total bytes stored");
+  });
+
   it('returns NaN total when count rows omit totals', async () => {
     const rows = [{ name: 'no-total' }];
     const db = createDatabaseMock(rows, { total: undefined });
@@ -254,6 +289,7 @@ describe('ImageService.getImagesAuditLogs', () => {
     expect(response.data?.recentUploads).toHaveLength(1);
     expect(response.total).toBeNaN();
     expect(response.data?.statistics.totalImages).toBeNaN();
+    expect(response.data?.statistics.bytesStored).toBe(0);
   });
 });
 

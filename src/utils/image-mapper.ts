@@ -10,6 +10,7 @@ export class ImageMapper {
             description: row.description,
             contentType: row.content_type,
             createdAt: row.created_at,
+            size: row.size,
         } as Partial<Image>
     }
     mapFormDataToImageUploadFileRequest(formData: FormData): ImageUploadFileRequest {
@@ -38,13 +39,19 @@ export class ImageMapper {
             name: imageName,
             description: imageDescription,
             contentType: imageRequest.file.type,
+            size: imageRequest.file.size,
             file: imageRequest.file,
         } as Image;
     }
 
     mapImageToPartialImage(image: Image): Partial<Image> {
         return {
-            id: image.id, name: image.name, description: image.description, contentType: image.contentType, createdAt: image.createdAt
+            id: image.id,
+            name: image.name,
+            description: image.description,
+            contentType: image.contentType,
+            createdAt: image.createdAt,
+            size: image.size,
         } as Partial<Image>;
     }
 }
