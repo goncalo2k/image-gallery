@@ -3,8 +3,8 @@
 \usepackage{graphicx}
 \usepackage{enumitem}
 \usepackage{xurl}
-\usepackage{hyperref}
 \usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue]{hyperref}
 \usepackage{listings}
 
 \setlength{\parskip}{0.6em}
@@ -251,16 +251,24 @@ The creation of building blocks was developed
   \item Create R2 Blob Storage using Wrangler\\\texttt{npx wrangler r2 bucket create analogs}
   \item Login to \href{https://dash.cloudflare.com}{Cloudflare Dashboard}
   \item Go to the \textbf{Storage} section, look for R2 and select your bucket.
-  \item Disable public access for your bucket.\\\includegraphics[width=0.6\textwidth]{media/r2/r2_security.png}
+  \item Disable public access for your bucket.\\\begin{center}
+    \includegraphics[width=0.6\textwidth]{media/r2/r2_security.png}
+  \end{center}
 \end{enumerate}
 
 \subsection{Service Token Creation}
 \begin{enumerate}[leftmargin=*]
   \item Login to \href{https://dash.cloudflare.com}{Cloudflare Dashboard}
   \item Go to \textbf{Zero Trust}, \textbf{Access Controls} and then \textbf{Service Credentials}
-  \item Select \textbf{Create Service Token}\\\includegraphics[width=0.5\textwidth]{media/token/token_1.png}
-  \item Add a name and a token duration, then generate it\\\includegraphics[width=0.5\textwidth]{media/token/token_2.png}
-  \item Finally, save your \textbf{Client Id} and \textbf{Client Secret}\\\includegraphics[width=0.5\textwidth]{media/token/token_3.png}
+  \item Select \textbf{Create Service Token}\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/token/token_1.png}
+  \end{center}
+  \item Add a name and a token duration, then generate it\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/token/token_2.png}
+  \end{center}
+  \item Finally, save your \textbf{Client Id} and \textbf{Client Secret}\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/token/token_3.png}
+  \end{center}
   \item Then, use Wrangler to put these values in the \textbf{Secret Store}\\\texttt{npx wrangler secret put CF-Access-Client-Secret}\\\texttt{npx wrangler secret put CF-Access-Client-Id}
 \end{enumerate}
 
@@ -268,24 +276,48 @@ The creation of building blocks was developed
 \begin{enumerate}[leftmargin=*]
   \item Login to \href{https://dash.cloudflare.com}{Cloudflare Dashboard}
   \item Go to \textbf{Zero Trust}, \textbf{Access Controls} and then \textbf{Policies}
-  \item Then, \textbf{Add a policy}\\\includegraphics[width=0.5\textwidth]{media/pol/pol_1.png}
-  \item Set its action as \textbf{Service Auth}, add a policy name, and its session duration\\\includegraphics[width=0.5\textwidth]{media/pol/pol_2.png}
-  \item Then, add an \textbf{include rule} and select \textbf{Service Token}\\\includegraphics[width=0.5\textwidth]{media/pol/pol_3.png}
-  \item Use the previously created token\\\includegraphics[width=0.5\textwidth]{media/pol/pol_4.png}
+  \item Then, \textbf{Add a policy}\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/pol/pol_1.png}
+  \end{center}
+  \item Set its action as \textbf{Service Auth}, add a policy name, and its session duration\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/pol/pol_2.png}
+  \end{center}
+  \item Then, add an \textbf{include rule} and select \textbf{Service Token}\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/pol/pol_3.png}
+  \end{center}
+  \item Use the previously created token\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/pol/pol_4.png}
+  \end{center}
 \end{enumerate}
 
 \subsection{Access Policy Creation}
 \begin{enumerate}[leftmargin=*]
   \item Login to \href{https://dash.cloudflare.com}{Cloudflare Dashboard}
   \item Go to \textbf{Zero Trust}, \textbf{Access Controls} and then \textbf{Applications}
-  \item Click \textbf{Add Application}\\\includegraphics[width=0.5\textwidth]{media/zt/zt_1.png}
-  \item Select \textbf{Self-hosted}\\\includegraphics[width=0.5\textwidth]{media/zt/zt_2.png}
-  \item Add the public hostname for the app you want to protect (in this case, image-gallery.goncalo2k.pt)\\\includegraphics[width=0.5\textwidth]{media/zt/zt_3.png}
-  \item Add Application name, session duration, and select the intended paths and subdomains if needed.\\\includegraphics[width=0.5\textwidth]{media/zt/zt_4.png}
-  \item Then, go on to \textbf{Access Policies} section and select an existing policy\\\includegraphics[width=0.5\textwidth]{media/zt/zt_5.png}
-  \item Select the previously created policy\\\includegraphics[width=0.5\textwidth]{media/zt/zt_6.png}
-  \item Then hit \textbf{Next}\\\includegraphics[width=0.5\textwidth]{media/zt/zt_7.png}
-  \item In the \textbf{Advanced Settings}, turn on \textbf{401 Response for Service Auth policies}\\\includegraphics[width=0.5\textwidth]{media/zt/zt_8.png}
+  \item Click \textbf{Add Application}\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/zt/zt_1.png}
+  \end{center}
+  \item Select \textbf{Self-hosted}\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/zt/zt_2.png}
+  \end{center}
+  \item Add the public hostname for the app you want to protect (in this case, image-gallery.goncalo2k.pt)\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/zt/zt_3.png}
+  \end{center}
+  \item Add Application name, session duration, and select the intended paths and subdomains if needed.\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/zt/zt_4.png}
+  \end{center}
+  \item Then, go on to \textbf{Access Policies} section and select an existing policy\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/zt/zt_5.png}
+  \end{center}
+  \item Select the previously created policy\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/zt/zt_6.png}
+  \end{center}
+  \item Then hit \textbf{Next}\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/zt/zt_7.png}
+  \end{center}
+  \item In the \textbf{Advanced Settings}, turn on \textbf{401 Response for Service Auth policies}\\\begin{center}
+    \includegraphics[width=0.5\textwidth]{media/zt/zt_8.png}
+  \end{center}
 \end{enumerate}
 
 \subsection{Worker Code Development}
