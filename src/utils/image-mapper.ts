@@ -8,7 +8,7 @@ export class ImageMapper {
             id: row.id,
             name: row.name,
             description: row.description,
-            contentType: row.content_typ,
+            contentType: row.content_type,
             createdAt: row.created_at,
         } as Partial<Image>
     }
