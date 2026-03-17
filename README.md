@@ -97,6 +97,48 @@ image-gallery/
 
 Specs mirror their source modules (e.g., `src/services/image.service.spec.ts`, `src/middleware/*.spec.ts`), so you can navigate between implementation and tests quickly.
 
+## Detailed repository analysis
+
+### Stack & entry point
+
+- `wrangler.jsonc` sets `src/app.ts` as the Worker entry, enables `nodejs_compat`, wires observability + source maps, and declares every binding the runtime expects (`ANALOGS_BUCKET`, `ANALOGS_METADATA_DB`, `AI`, `IMAGES`, cache) plus sane defaults for headers, auth routes, `MAX_UPLOAD_SIZE_MB`, and `LOG_LEVEL`.
+- `.dev.vars.example` mirrors the credential knobs Wrangler injects so `wrangler dev` can boot with the same env contract.
+- `src/app.ts` instantiates a single Hono app, threads request-scoped variables, registers the middleware stack, exposes `/health`, `/openapi.json`, `/docs`, and mounts the `/images` router that services all public API verbs.
+
+### Source tree deep dive (`src/`)
+
+- `routes/image.routes.ts` builds one `ImageController` backed by an `ImageService` + `ImageMapper`, then mounts upload, audit, detail, and delete handlers under `/images`.
+- `controllers/image.controller.ts` handles `caches.default` lookups, request parsing (multipart + fetchers via the mapper), response shaping, cache invalidation on deletes, and consistent error serialization via `parseErrorMessage` / `requestLogger`.
+- `services/image.service.ts` is the orchestrator: it paginates D1 queries, de-dupes uploads by name, enforces `MAX_UPLOAD_SIZE_MB`, runs R2 blob writes + AI caption generation (Cloudflare Images downscaling >1 MB buffers) in parallel with `Promise.allSettled`, persists metadata inside `executionCtx.waitUntil`, cleans up orphaned blobs, streams reads from R2 with metadata hydration, and powers audit/statistics plus deletion fan-out.
+- `models/` centralizes types for every payload (`Image`, upload requests, audit logs, `ApiResponse<T>` wrappers), keeping controller/service contracts type-safe.
+- `middleware/` holds each concern with matching specs: `logger-middleware.ts` issues correlation IDs and structured logs, `cors.middleware.ts` builds allow-lists from CSV env vars, `auth.middleware.ts` protects routes with timing-safe header comparisons + optional path scoping, and `security-headers.middleware.ts` emits CSP/Referrer-Policy/Nosniff headers while relaxing CSP just for `/docs`.
+- `utils/` wraps reusable helpers: `image-mapper.ts` translates between D1 rows/FormData/DTOs, `logger.ts` provides a request-scoped Pino logger with redaction, and `utils.ts` owns CSV parsing, filename validation, pagination math, buffer→stream conversion, and error normalization.
+- `docs/openapi.ts` keeps the OpenAPI 3.1 document collocated with the runtime so Cloudflare Workers can rewrite the `servers` block on every request to mirror the caller’s host/proto while still advertising canonical deployments (production + localhost).
+
+### Data & storage behavior
+
+- `schema.sql` provisions the `Images` table with a unique `name` index, timestamps, and `content_type`, matching the SQL the service issues for pagination, audit logs, and deletes.
+- Reads call `ANALOGS_METADATA_DB` for counts/metadata while R2 supplies the binary + `httpMetadata.contentType`; responses stream files and stamp cache headers (`Cache-Control`, custom `ALT_HEADER_NAME`, deterministic `ETag`, `Accept-Ranges`).
+- Upload flows stage blobs in R2, optionally downscale before AI captioning, then enqueue metadata writes; failures trigger compensating deletes so R2 and D1 stay in sync.
+- External ingest (`uploadExternalImage`) validates URLs, MIME types, and filenames before reusing the same upload path, guaranteeing remote fetches obey the same guards as direct uploads.
+
+### Testing & quality gates
+
+- Vitest specs cover every layer: `src/services/image.service.spec.ts` stubs bindings to assert pagination, cleanup, and AI fallbacks; `src/controllers/image.controller.spec.ts` verifies caching + HTTP statuses; middleware specs assert auth/CORS/security/header logic; `src/utils/utils.spec.ts` keeps CSV/validation helpers honest.
+- Tooling is codified in `package.json`: `pnpm run lint` / `lint:fix` rely on `@hono/eslint-config`, `pnpm run test` executes `vitest run`, and Husky hooks (`pnpm prepare`) run both commands before every commit.
+
+### Operational scripts & automation
+
+- `scripts/batch-upload.mjs` bulk-seeds the gallery by POSTing to `/images/external`, honoring env-configurable concurrency, throttling, auth headers, and remote placeholder URLs while reporting aggregate success/failure stats.
+- `scripts/clear-all-images.mjs` iteratively pages through `/images` and deletes each entry (with dry-run + batching toggles) so sandboxes can be reset safely.
+- `scripts/utils/load-env.mjs` loads `scripts/.env` to share API hosts, auth headers, rate limits, and other knobs across every automation entry point.
+- Database helpers (`pnpm run setup-local-db` / `deploy-db`) wrap Wrangler D1 executions so the schema above can be applied locally or remotely without copy/pasting SQL.
+
+### Observability & security posture
+
+- Request logging combines correlation IDs (`loggingMiddleware`) with Pino mixins (`utils/logger.ts`) to emit single-line JSON logs that redact sensitive headers automatically.
+- Defense-in-depth includes configurable CORS, auth, TLS-friendly CSP defaults, and cache invalidation hooks, ensuring even public endpoints stay hardened when deployed at the edge.
+
 ## Local development
 
 ### Prerequisites
