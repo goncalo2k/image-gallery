@@ -368,13 +368,13 @@ export const openApiSpec: OpenAPIObject = {
       ClientIdHeader: {
         type: 'apiKey',
         in: 'header',
-        name: 'x-client-id',
+        name: 'CF-Access-Client-Id',
         description: 'Client identifier header.',
       },
       ClientSecretHeader: {
         type: 'apiKey',
         in: 'header',
-        name: 'x-client-secret',
+        name: 'CF-Access-Client-Secret',
         description: 'Client secret header.',
       },
     },

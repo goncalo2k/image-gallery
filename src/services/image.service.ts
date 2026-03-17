@@ -233,15 +233,16 @@ export class ImageService {
             throw new Error("Invalid file name format");
         }
 
-        const descriptionResult = await ANALOGS_METADATA_DB.prepare('SELECT id, description, created_at FROM images WHERE name = ? LIMIT 1').bind(name).first();
+        const descriptionResult = await ANALOGS_METADATA_DB.prepare('SELECT id, description, created_at, content_type FROM images WHERE name = ? LIMIT 1').bind(name).first();
         const createdAt = descriptionResult?.created_at as string;
         const description = descriptionResult?.description as string;
         const id = descriptionResult?.id as string;
-        if (!description || !createdAt) {
+        const contentType = descriptionResult?.content_type as string;
+        if (!description || !createdAt || !id || !contentType) {
             return undefined;
         }
 
-        return { /* file: file, */ description, name/* , contentType */, createdAt, id } as Image;
+        return { description, name, contentType, createdAt, id } as Image;
     }
 
     private async fetchExternalImage(request: ImageUploadUrlRequest): Promise<File> {

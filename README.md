@@ -44,12 +44,18 @@ Edge-native image ingestion and metadata API built for Cloudflare Workers. Binar
 ```sql
 DROP TABLE IF EXISTS Images;
 
-CREATE TABLE IF NOT EXISTS Images (
-  name TEXT PRIMARY KEY,
-  description TEXT NOT NULL,
-  content_type TEXT,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+DROP INDEX IF EXISTS NameIndex;
+
+CREATE TABLE
+  IF NOT EXISTS Images (
+    id TEXT PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT NOT NULL,
+    content_type TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+CREATE INDEX IF NOT EXISTS NameIndex ON Images (name);
 ```
 
 ## API surface

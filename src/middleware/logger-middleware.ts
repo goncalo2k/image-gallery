@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import type { AppContext } from "../app";
 
 import { requestLogger } from "../utils/logger";
@@ -6,7 +5,7 @@ import { requestLogger } from "../utils/logger";
 
 export const loggingMiddleware = () => {
     return async (c: AppContext, next: () => Promise<void>) => {
-        const cid = c.req.header('X-Correlation-Id') ?? uuidv4();
+        const cid = c.req.header('X-Correlation-Id') ?? crypto.randomUUID();
         c.set('correlationId', cid);
         c.res.headers.set('X-Correlation-Id', cid);
 

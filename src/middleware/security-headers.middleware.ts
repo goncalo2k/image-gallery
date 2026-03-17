@@ -1,7 +1,6 @@
-import type { Context, Next } from 'hono'
-import type { Bindings, Variables } from '../app';
+import type { Next } from 'hono'
+import type { AppContext } from '../app';
 
-type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>
 
 export const securityHeadersMiddleware = () => {
   return async (c: AppContext, next: Next) => {

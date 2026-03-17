@@ -150,7 +150,7 @@ describe('ImageController', () => {
     const { ctx } = createContext();
     (serviceMocks.getImagesMetadata as Mock).mockRejectedValue(new Error('db down'));
 
-    const result = await controller.getImagesMetada(ctx);
+    const result = await controller.getImagesMetadata(ctx);
 
     expect(loggerErrorSpy).toHaveBeenCalled();
     expect(result).toEqual({ body: { errorMessage: 'Failed to get images.' }, status: 500 });
@@ -215,8 +215,8 @@ describe('ImageController', () => {
 
     const response = await controller.getImage(ctx);
 
-    expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: `Image with ${name} not found` }, 404);
-    expect(response).toEqual({ body: { errorMessage: `Image with ${name} not found` }, status: 404 });
+    expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: `Image with id ${name} not found` }, 404);
+    expect(response).toEqual({ body: { errorMessage: `Image with id ${name} not found` }, status: 404 });
   });
 
   it('uploads image via mapper and service', async () => {

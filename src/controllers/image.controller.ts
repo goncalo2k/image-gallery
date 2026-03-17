@@ -19,7 +19,7 @@ export class ImageController {
         }
     }
 
-    async getImagesMetada(c: AppContext): Promise<Response> {
+    async getImagesMetadata(c: AppContext): Promise<Response> {
         try {
             const imagesReponse = await this.imageService.getImagesMetadata(c);
             return c.json(imagesReponse, 200);
@@ -38,10 +38,10 @@ export class ImageController {
         try {
             const image = await this.imageService.getImageById(c.env.ANALOGS_BUCKET, c.env.ANALOGS_METADATA_DB, id);
             if (!image) {
-                return c.json({ errorMessage: `Image with ${id} not found` }, 404);
+                return c.json({ errorMessage: `Image with id ${id} not found` }, 404);
             }
             if (!image.description || !image.contentType) {
-                return c.json({ errorMessage: `Image with ${id} not found` }, 404);
+                return c.json({ errorMessage: `Image with id ${id} not found` }, 404);
             }
 
             const headerName = c.env.ALT_HEADER_NAME;
@@ -68,7 +68,7 @@ export class ImageController {
         } catch (error: unknown) {
             const logger = requestLogger(c);
             const errorMessage = parseErrorMessage(error);
-            logger.error(`Failed to get image with ${id}: ${errorMessage}`);
+            logger.error(`Failed to get image with id ${id}: ${errorMessage}`);
             return c.json({ errorMessage: 'Failed to get image.' }, 500)
         }
     }
@@ -106,20 +106,20 @@ export class ImageController {
     async deleteImage(c: AppContext): Promise<Response> {
         const id = String(c.req.param('id'));
         const cacheKey = new Request(c.req.raw.url);
-        c.executionCtx.waitUntil(
-            caches.default.delete(cacheKey).catch((cacheError: unknown) => {
-                console.warn('Failed to invalidate cache:', cacheError);
-            })
-        );
         try {
             const deletedResponse = await this.imageService.deleteImage(c, id);
             if (deletedResponse.status === 500) { throw Error(`Couldn't delete image.`); }
+            c.executionCtx.waitUntil(
+                caches.default.delete(cacheKey).catch((cacheError: unknown) => {
+                    console.warn('Failed to invalidate cache:', cacheError);
+                })
+            );
             return c.json(undefined, deletedResponse.status);
         }
         catch (error: unknown) {
             const logger = requestLogger(c);
             const errorMessage = parseErrorMessage(error);
-            logger.error(`Failed to delete image with ${id}: ${errorMessage}`);
+            logger.error(`Failed to delete image with id ${id}: ${errorMessage}`);
             return c.json({ errorMessage: 'Failed to delete image.' }, 500)
         }
     }

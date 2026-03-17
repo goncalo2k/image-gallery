@@ -10,9 +10,6 @@ vi.mock('../utils/logger', () => ({
   requestLogger: requestLoggerMock,
 }));
 
-const uuidMock = vi.hoisted(() => vi.fn(() => faker.string.uuid()));
-vi.mock('uuid', () => ({ v4: uuidMock }));
-
 const createContext = (options?: { correlationHeader?: string; method?: string; path?: string }) => {
   const headersStore = new Map<string, string>();
   const variables = new Map<string, string>();
@@ -25,11 +22,11 @@ const createContext = (options?: { correlationHeader?: string; method?: string; 
     header: headerMock,
     method: options?.method ?? 'GET',
     path: options?.path ?? faker.internet.url(),
-  } as AppContext['req'];
+  } as unknown as AppContext['req'];
   const res = {
     headers: headersStore,
     status: 200,
-  } as AppContext['res'];
+  } as unknown as AppContext['res'];
 
   const ctx: AppContext = {
     req,
@@ -41,9 +38,9 @@ const createContext = (options?: { correlationHeader?: string; method?: string; 
       waitUntil: vi.fn((promise: Promise<unknown>) => {
         promise.catch(() => undefined);
       }),
-    } as AppContext['executionCtx'],
-    json: (() => Response.json({})) as AppContext['json'],
-  } as AppContext;
+    } as unknown as AppContext['executionCtx'],
+    json: (() => Response.json({})) as unknown as AppContext['json'],
+  } as unknown as AppContext;
 
   return { ctx, headersStore, variables, headerMock };
 };
@@ -53,7 +50,6 @@ describe('loggingMiddleware', () => {
     vi.restoreAllMocks();
     loggerInfoSpy.mockReset();
     requestLoggerMock.mockImplementation(() => ({ info: loggerInfoSpy }));
-    uuidMock.mockReturnValue(faker.string.uuid());
   });
 
   it('uses existing correlation id and logs request lifecycle', async () => {
@@ -86,12 +82,15 @@ describe('loggingMiddleware', () => {
 
   it('generates correlation id when missing', async () => {
     const generatedId = faker.string.uuid();
-    uuidMock.mockReturnValueOnce(generatedId);
+    interface CryptoWithUUID { randomUUID: () => string }
+    const cryptoApi = globalThis as typeof globalThis & { crypto: CryptoWithUUID };
+    const randomUuidSpy = vi.spyOn(cryptoApi.crypto, 'randomUUID').mockReturnValueOnce(generatedId);
     const { ctx, headersStore, variables } = createContext();
 
     await loggingMiddleware()(ctx, vi.fn());
 
     expect(headersStore.get('X-Correlation-Id')).toBe(generatedId);
     expect(variables.get('correlationId')).toBe(generatedId);
+    randomUuidSpy.mockRestore();
   });
 });
