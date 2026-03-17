@@ -125,18 +125,28 @@ After using the correct headers, a successful response is seen. ![Audit Success]
 ## 6. Solution Architecture
 Image gallery was built as a combination of several Cloudflare-managed services that each handle a discrete responsibility while sharing data through Worker bindings and secure environment variables.
 ### System Components and Architecture
-//TODO
-#### R2 Object Storage
-#### Workers AI
-#### D1 Database
-#### Cache API
-#### Cloudflare Access
-#### Cloudflare Images
-#### Worker High Level Design
+
+#### System Components
+
+- **R2 Object Storage** – Private bucket that stores the binary data for every upload. Workers never expose the bucket directly; all reads/writes go through bindings so IAM stays centralized.
+- **Workers AI** – Generates descriptive alt text when the user does not provide one. Requests are throttled by resizing buffers first to stay within inference limits.
+- **D1 Database** – Holds authoritative metadata (name, description, MIME type, timestamps). Lookups prevent duplicate uploads and feed `/images`, `/images/audit`, and delete checks.
+- **Cache API** – Provides immutable edge caching for `GET /images/:id`. Deletes schedule cache invalidation via `executionCtx.waitUntil` to keep replicas in sync.
+- **Cloudflare Access** – Protects `/images/audit` (and any future admin route) with service tokens enforced by `auth.middleware.ts`.
+- **Cloudflare Images** – Acts as an on-the-fly transformer so Workers AI receives 1024×1024 JPEGs even when creators upload multi‑megabyte PNGs.
+
+#### High-level System Architecture
+The worker sits at the center of the platform and orchestrates multiple services: R2 stores every uploaded binary, Workers AI produces fallback descriptions, D1 keeps normalized metadata, Cloudflare Images resizes large buffers before inference, and the Cache API accelerates read-heavy endpoints. Cloudflare Access service tokens wrap the privileged `/images/audit` route behind Zero-Trust authentication while environment secrets keep every credential outside the codebase. Each upload request streams the file into R2, generates or reuses alt text, and enqueues a metadata write in D1; download requests hydrate cache entries with immutable headers so subsequent requests are answered directly from Cloudflare’s edge. Supporting scripts (batch upload + clear) exercise the same public endpoints which means operational automation never bypasses access controls. The diagram below captures how those building blocks interact at runtime.
+![System Architecture](./diagrams/system-architecture-diagram.svg)
+
+#### High-level Worker Architecture
+The Framework utilzed to build the worker was Hono, as it is compatible with Cloudflare out-of-the-box and very lightweight, which sped up the delivery process.
+
+From a code perspective, `src/app.ts` wires the Hono router together with middleware for logging, CORS, authentication, and security headers so every request flows through a consistent envelope. `routes/image.routes.ts` mounts the controller methods under `/images`, while `ImageController` focuses on HTTP concerns such as parsing multipart payloads, caching R2 responses, invalidating cache entries after deletes, and translating service results into JSON bodies. The heavy lifting lives in `ImageService`: it validates filenames and MIME types, streams uploads to R2, generates alt text with Workers AI (resizing buffers via the Images binding when necessary), inserts metadata into D1, fetches audit logs, and runs deletion fan‑out across R2 and D1 in parallel. Utility modules (`image-mapper`, `utils/utils.ts`) provide reusable helpers for pagination, CSV/env parsing, and DTO transformations so controllers and services stay small. Middleware round things out: `auth.middleware.ts` protects configured routes with timing-safe header comparisons, `logger-middleware.ts` attaches correlation IDs plus structured logs, `cors.middleware.ts` enforces allow-lists, and `security-headers.middleware.ts` emits CSP/nosniff defaults. Tests under `src/**/*.spec.ts` exercise each layer, giving rapid feedback when iterating on the worker logic. This can be shown in the following diagram
+
 ![Worker High-level Design](./diagrams/worker-high-level-design.svg)
 
-Leading up to the following architecture: 
-![System Architecture](./diagrams/system-architecture-diagram.svg)
+
 
 
 ## 7. Implementation
