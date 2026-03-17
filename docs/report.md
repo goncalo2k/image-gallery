@@ -22,100 +22,72 @@ Additionally, the system includes administrative and operational capabilities su
 
 ## 1. Solution Requirements
 The initial requirements presented for this product were the following:
-<ol>
-    <li>Business Requirements
-        <ul>
-            <li>
-                The platform must provide a scalable and globally accessible image delivery service capable of serving images with descriptive metadata to improve accessibility.
-            </li>
-            <li>
-                The system must automatically generate and manage descriptive alt-text for images to enhance accessibility compliance and improve user experience.
-            </li>
-            <li>
-                The platform must minimize operational costs by leveraging edge caching and efficient AI inference usage.
-            </li>
-            <li>
-                The system must maintain a persistent and auditable record of processed images and their associated metadata.
-            </li>
-            <li>
-                The platform must support automated ingestion of new image assets to streamline content management workflows.
-            </li>
-            <li>
-                The system must enforce secure storage and controlled access to image assets and administrative interfaces.
-            </li>
-        </ul>
-    </li>
-    <li>Functional Requirements
-        <ul>
-            <li>
-                Image Storage: The system must initialize a private Cloudflare R2 bucket and it must be populated with a small set of sample images for testing.
-            </li>
-            <li>
-                Edge Image Delivery: A Cloudflare Worker must serve images directly to web browsers. Each image response must include a descriptive alt-text string in a custom HTTP header.
-            </li>
-            <li>
-                Alt-Text Generation: The system must generate image descriptions using Workers AI vision models when alt-text is not available. This should be done while respecting Workers AI daily neuron limits. The system must avoid re-running inference for images that have already been processed.
-            </li>
-            <li>
-                Persistent Metadata Storage: A Cloudflare D1 database must store generated alt-text descriptions and associated image metadata. The system must query the database to determine whether an image has already been processed.
-            </li>
-            <li>
-                Caching and Performance: The system must leverage Cloudflare's Cache API for performance and compute optimization. The architecture must also leverage non-blocking background operations so image delivery is not delayed by database or AI processing.
-            </li>
-            <li>
-                Administrative Endpoint: A secure `/audit` endpoint must return a JSON list of processed images and their stored metadata from D1.
-            </li>
-            <li>
-                Dynamic Image Ingestion: The system must allow new images to be ingested from an external URL, storing them in the R2 bucket and automatically triggering description generation and metadata storage.
-            </li>
-        </ul>
-    </li>
-    <li>Security Requirements
-        <ul>
-            <li>
-                Secure Storage: The R2 bucket must remain private and inaccessible directly from the public internet.
-            </li>
-            <li>
-                Endpoint Protection: Administrative endpoints (e.g., `/audit`) must require secure access controls.
-            </li>
-            <li>
-                Environment Security: Secrets (API keys, tokens, database credentials) must be stored using Cloudflare environment variables or secret management.
-            </li>
-        </ul>
-    </li>
-</ol>
+ - Business Requirements
+   - The platform must provide a scalable and globally accessible image delivery service capable of serving images with descriptive metadata to improve accessibility.
+          
+    - The system must automatically generate and manage descriptive alt-text for images to enhance accessibility compliance and improve user experience.
+    - The platform must minimize operational costs by leveraging edge caching and efficient AI inference usage.
+    - The system must maintain a persistent and auditable record of processed images and their associated metadata.
+    - The platform must support automated ingestion of new image assets to streamline content management workflows.
+    - The system must enforce secure storage and controlled access to image assets and administrative interfaces.
+        
+  - Functional Requirements
+    - Image Storage: The system must initialize a private Cloudflare R2 bucket and it must be populated with a small set of sample images for testing.
+    - Edge Image Delivery: A Cloudflare Worker must serve images directly to web browsers. Each image response must include a descriptive alt-text string in a custom HTTP header.
+    - Alt-Text Generation: The system must generate image descriptions using Workers AI vision models when alt-text is not available. This should be done while respecting Workers AI daily neuron limits. The system must avoid re-running inference for images that have already been processed.
+    - Persistent Metadata Storage: A Cloudflare D1 database must store generated alt-text descriptions and associated image metadata. The system must query the database to determine whether an image has already been processed.
+    - Caching and Performance: The system must leverage Cloudflare's Cache API for performance and compute optimization. The architecture must also leverage non-blocking background operations so image delivery is not delayed by database or AI processing.
+    - Administrative Endpoint: A secure `/audit` endpoint must return a JSON list of processed images and their stored metadata from D1.
+    - Dynamic Image Ingestion: The system must allow new images to be ingested from an external URL, storing them in the R2 bucket and automatically triggering description generation and metadata storage.
+    - 
+- Security Requirements
+    - Secure Storage: The R2 bucket must remain private and inaccessible directly from the public internet.
+    - Endpoint Protection: Administrative endpoints (e.g., `/audit`) must require secure access controls.
+    - Environment Security: Secrets (API keys, tokens, database credentials) must be stored using Cloudflare environment variables or secret management.
 
 ---
 
-## 2. Solution Architecture
-Image gallery was built as a combination of several Cloudflare-managed services that each handle a discrete responsibility while sharing data through Worker bindings and secure environment variables.
-### System Components
-#### Cloudflare Workers
+## 2. Real Utilization Example (Portfolio)
 
-##### Worker High Level Design
-![Worker High-level Design](./diagrams/worker-high-level-design.svg)
+## 3. Instructions to Use the Platform
+### Viewing Images
+#### Deployed Version
+#### Local Development
+
+### Ingesting Images
+#### Deployed Version
+#### Local Development
+
+### Administrative Audit Endpoint
+#### Deployed Version
+#### Local Development
+
+## 4. Customer Experience
+
+## 5. Solution Architecture
+Image gallery was built as a combination of several Cloudflare-managed services that each handle a discrete responsibility while sharing data through Worker bindings and secure environment variables.
+### System Components and Architecture
+
 #### R2 Object Storage
 #### Workers AI
 #### D1 Database
 #### Cache API
 #### Cloudflare Access
 #### Cloudflare Images
----
+#### Worker High Level Design
+![Worker High-level Design](./diagrams/worker-high-level-design.svg)
 
-### High Level Architecture
+Leading up to the following architecture: 
 ![System Architecture](./diagrams/system-architecture-diagram.svg)
 
 
-## 3. Architecture Rationale
-
-
-## 4. Implementation
+## 6. Implementation
 The creation of building blocks was developed
-### 4.1 Prerequisites: 
+### 6.1 Prerequisites: 
 1. Sign up for a [Cloudflare Account](https://dash.cloudflare.com/)
 2. Install [Node.js](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 
-### 4.2 Worker Creation
+### 6.2 Worker Creation
 1. Install Wrangler CLI
 ```pnpm i wrangler@latest```
 3. Login using Wrangler CLI
@@ -136,7 +108,7 @@ The creation of building blocks was developed
 ]
   ```
 
-### 4.3 R2 and D1 Creation
+### 6.3 R2 and D1 Creation
  1. Create D1 Database using Wrangler <br>
 ```npx wrangler@latest d1 create analogs-db```
  
@@ -148,7 +120,7 @@ The creation of building blocks was developed
  3. Disable public access for your bucket.</li>
     ![Disabling of Public Access to Bucket](./media/r2/r2_security.png)
 
-### 4.4 Service Token Creation
+### 6.4 Service Token Creation
 1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Go to **Zero Trust**, **Access Controls** and then **Service Credentials**
 3. Select **Create Service Token**
@@ -158,7 +130,7 @@ The creation of building blocks was developed
 5. Finally, save your **Client Id** and **Client Secret**
 ![Adding Application to Access Controls](./media/token/token_3.png)
 
-### 4.5 Security Policy Creation
+### 6.5 Security Policy Creation
 1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Go to **Zero Trust**, **Access Controls** and then **Policies**
 3. Then, **Add a policy**
@@ -171,7 +143,7 @@ The creation of building blocks was developed
     ![Adding Application to Access Controls](./media/pol/pol_4.png)
 
 
-### 4.6 Access Policy Creation
+### 6.6 Access Policy Creation
 1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Go to **Zero Trust**, **Access Controls** and then **Applications**
 3. Click **Add Application**
@@ -191,28 +163,40 @@ The creation of building blocks was developed
 10. In the **Advanced Settings**, turn on **401 Response for Service Auth policies**
     ![Turn on 401 Response for Service Auth policies](./media/zt/zt_8.png)
 
+### 6.7 Worker Code Development
 
-### 4.7 Worker Code Development
+## 7. Performance Considerations
 
-## 5. Instructions to Use the Platform
-### Viewing Images
-#### Deployed Version
-#### Local Development
+The Worker architecture optimizes both latency and resource consumption:
 
-### Ingesting Images
-#### Deployed Version
-#### Local Development
+1. **Edge caching as first hop** – `ImageController.getImage` hits `caches.default` before R2/D1 and caches successful responses with immutable TTLs and strong `ETag`s. Deletes schedule `caches.default.delete()` inside `executionCtx.waitUntil` to prevent stale assets lingering at the edge.
+2. **Parallel ingestion** – R2 uploads and Workers AI captioning run concurrently via `Promise.allSettled`. Metadata writes execute in `executionCtx.waitUntil`, so client requests only wait for blob persistence and caption generation, not D1 inserts.
+3. **Smart payload bounds** – `MAX_UPLOAD_SIZE_MB` guards uploads, while `resizeImageForAI` uses the Images binding to downscale >1 MB buffers to 1024×1024 JPEGs, reducing inference cost and memory pressure.
+4. **Efficient pagination** – `getPaginationParams` sanitizes `offset`/`limit` (max 100) for `/images` and `/images/audit`, avoiding large scans. Prepared statements reuse query plans, keeping D1 latency steady.
+5. **Streamed delivery** – Downloaded R2 objects are wrapped in `File` instances and streamed to the client, so Workers can start sending bytes immediately instead of buffering entire images.
+6. **Operational throttling** – Automation scripts (`scripts/batch-upload.mjs`, `scripts/clear-all-images.mjs`) expose concurrency/delay knobs, ensuring bulk jobs do not overwhelm the Worker or exceed API quotas.
 
-### Administrative Audit Endpoint
-#### Deployed Version
-#### Local Development
+## 8. Knowledge Gaps and Learning Process
 
-## 5. Performance Considerations
+Despite previous experience with Cloudflare Workers, several capabilities required deeper research before implementing the final solution. Each gap below lists the referenced material and the concrete takeaway that shaped the codebase.
 
-## 6. Knowledge Gaps and Learning Process
+1. **Workers AI pipeline design** – The [Workers AI use-case catalog](https://developers.cloudflare.com/use-cases/ai/) clarified how to trigger multimodal models from Workers, what payload shapes they expect, and how to stay within neuron budgets. This guided the `ImageService.generateImageAltText` implementation (resizing buffers before inference and capping token counts).
+2. **D1 query ergonomics** – The [D1 documentation](https://developers.cloudflare.com/d1/) explained prepared statements, result helpers (`.first()`, `.run()`), and schema deployment flows. Those patterns now appear in every metadata access path plus the `pnpm run setup-local-db` / `deploy-db` scripts.
+3. **R2 usage from Workers** – The [R2 Workers API reference](https://developers.cloudflare.com/r2/api/workers/workers-api-usage/) highlighted binary upload strategies, HTTP metadata, and consistency notes, informing the `uploadImageBlob` helper and the immutable caching headers returned on reads.
+4. **Typed bindings** – The Worker best-practices note on [wrangler types](https://developers.cloudflare.com/workers/best-practices/workers-best-practices/#generate-binding-types-with-wrangler-types) showed how to auto-generate `worker-configuration.d.ts`, which led to the `pnpm run cf-typegen` script and the strongly typed `AppEnv` interface.
+5. **Edge caching semantics** – Building `ImageController.getImage` required revisiting the [Cache API docs](https://developers.cloudflare.com/workers/runtime-apis/cache/) to confirm how `caches.default.put()` behaves within `waitUntil`, how keys are derived, and how invalidation works after deletions.
+6. **Execution context guarantees** – The [Context API reference](https://developers.cloudflare.com/workers/runtime-apis/context/) clarified that `executionCtx.waitUntil` may outlive the request but not the Worker deployment, reinforcing the decision to offload D1 writes and cache invalidations into that lifecycle hook.
+7. **Timing-safe auth** – To harden `/images/audit` and any protected routes, the Worker follows the [timing-attack protection example](https://developers.cloudflare.com/workers/examples/protect-against-timing-attacks/) by comparing credentials with `crypto.subtle.timingSafeEqual`, preventing side-channel leaks even when headers are incorrect.
 
-## 7. Real Utilization Example (Portfolio)
-
-## 8. Customer Experience
+Documenting these learnings ensures future contributors know which Cloudflare primitives influenced each architectural decision and where to dig deeper when requirements evolve.
 
 ## 9. Security Considerations
+
+Security spans middleware, bindings, and operational guardrails:
+
+1. **Authenticated admin routes** – `auth.middleware.ts` inspects `CLIENT_ID_HEADER` / `CLIENT_SECRET_HEADER`, enforces timing-safe comparisons with `crypto.subtle.timingSafeEqual`, and scopes protection via `AUTH_ROUTES` so sensitive endpoints (e.g., `/images/audit`) require valid service tokens.
+2. **Least-privilege bindings** – `wrangler.jsonc` binds only the required resources (R2, D1, Images, AI) plus explicit env vars. Secrets never live in code, and `.dev.vars.example` documents placeholders so local dev mirrors production without credential reuse.
+3. **Request hygiene** – `cors.middleware.ts` parses `ALLOWED_ORIGINS` CSV allow-lists, rejecting disallowed origins. `security-headers.middleware.ts` adds CSP, `X-Content-Type-Options`, and `Referrer-Policy`, relaxing CSP solely for `/docs` so Swagger assets can load safely.
+4. **Data consistency & cache cleanup** – Delete operations fan out to R2 + D1 via `Promise.allSettled`, and cache entries are purged asynchronously with `executionCtx.waitUntil(caches.default.delete(...))`, preventing orphaned binaries or stale public responses.
+5. **Input validation** – `isValidImageName`, `MAX_UPLOAD_SIZE_MB`, and strict MIME checks on external ingestion prevent malformed uploads. FormData mappers normalize names to lowercase to avoid duplicates with different casing.
+6. **Structured logging** – `loggingMiddleware` issues correlation IDs per request, and the Pino logger redacts sensitive headers, enabling auditing without exposing secrets.
