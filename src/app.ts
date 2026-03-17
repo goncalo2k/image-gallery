@@ -8,6 +8,7 @@ import { corsMiddleware } from './middleware/cors.middleware';
 import { loggingMiddleware } from './middleware/logger-middleware';
 import { securityHeadersMiddleware } from './middleware/security-headers.middleware';
 import imageRoutes from './routes/image.routes';
+import { requestLogger } from './utils/logger';
 
 export type AppContext = Context<AppEnv>;
 
@@ -56,5 +57,10 @@ app.get('/health', (c) => {
   }, 200)
 })
 
+app.onError((err, c) => {
+  const logger = requestLogger(c)
+  logger.error({ err }, 'Unhandled application error')
+  return c.json({ errorMessage: 'Internal Server Error' }, 500)
+})
 
 export default app;

@@ -200,9 +200,21 @@ export class ImageService {
         const [blobResult, metadataResult] = await Promise.allSettled([
             this.deleteImageBlob(c.env.ANALOGS_BUCKET, id),
             this.deleteImageMetadata(c.env.ANALOGS_METADATA_DB, id)
-        ])
+        ]);
 
-        return { status: blobResult.status === 'fulfilled' && metadataResult.status === 'fulfilled' && metadataResult.value.meta.changed_db && metadataResult.value.success ? 200 : 500 }
+        if (metadataResult.status !== 'fulfilled' || !metadataResult.value.success) {
+            return { status: 500 };
+        }
+
+        if (!metadataResult.value.meta.changed_db || metadataResult.value.meta.changes === 0) {
+            return { status: 404, errorMessage: `Image with id ${id} was not found` };
+        }
+
+        if (blobResult.status !== 'fulfilled') {
+            return { status: 500 };
+        }
+
+        return { status: 200 };
     }
 
     private async getImageMetadataByName(ANALOGS_METADATA_DB: D1Database, name: string): Promise<Partial<Image> | undefined> {
