@@ -5,7 +5,7 @@ Edge-native image ingestion and metadata API built for Cloudflare Workers. Binar
 ## Why this worker
 
 - **Cloudflare-native stack** – Workers runtime with bindings for R2 (`ANALOGS_BUCKET`), D1 (`ANALOGS_METADATA_DB`), AI (`AI`), Images (`IMAGES`), and the Cache API.
-- **Multiple ingestion paths** – Accept a multipart file upload or fetch a remote URL, sanitize its name, and persist both the blob and metadata.
+- **Multiple ingestion paths** – Accept file upload or fetch a remote URL, sanitize its name, and persist both the blob and metadata.
 - **AI-powered accessibility** – Missing descriptions trigger `@cf/llava-hf/llava-1.5-7b-hf`; oversized buffers are resized via the Images binding before inference to save tokens.
 - **Resilient writes** – Blob upload and description generation happen in parallel, and metadata persistence runs in `executionCtx.waitUntil`. Failures trigger best-effort cleanup.
 - **Edge caching & headers** – Successful `GET /images/:name` responses emit immutable caching headers, an opinionated `ETag`, and store the object in `caches.default` for future hits.
@@ -114,7 +114,7 @@ Specs mirror their source modules (e.g., `src/services/image.service.spec.ts`, `
 ### Source tree deep dive (`src/`)
 
 - `routes/image.routes.ts` builds one `ImageController` backed by an `ImageService` + `ImageMapper`, then mounts upload, audit, detail, and delete handlers under `/images`.
-- `controllers/image.controller.ts` handles `caches.default` lookups, request parsing (multipart + fetchers via the mapper), response shaping, cache invalidation on deletes, and consistent error serialization via `parseErrorMessage` / `requestLogger`.
+- `controllers/image.controller.ts` handles `caches.default` lookups, request parsing (fetchers via the mapper), response shaping, cache invalidation on deletes, and consistent error serialization via `parseErrorMessage` / `requestLogger`.
 - `services/image.service.ts` is the orchestrator: it paginates D1 queries, de-dupes uploads by name, enforces `MAX_UPLOAD_SIZE_MB`, runs R2 blob writes + AI caption generation (Cloudflare Images downscaling >1 MB buffers) in parallel with `Promise.allSettled`, persists metadata inside `executionCtx.waitUntil`, cleans up orphaned blobs, streams reads from R2 with metadata hydration, and powers audit/statistics plus deletion fan-out.
 - `models/` centralizes types for every payload (`Image`, upload requests, audit logs, `ApiResponse<T>` wrappers), keeping controller/service contracts type-safe.
 - `middleware/` holds each concern with matching specs: `logger-middleware.ts` issues correlation IDs and structured logs, `cors.middleware.ts` builds allow-lists from CSV env vars, `auth.middleware.ts` protects routes with timing-safe header comparisons + optional path scoping, and `security-headers.middleware.ts` emits CSP/Referrer-Policy/Nosniff headers while relaxing CSP just for `/docs`.
