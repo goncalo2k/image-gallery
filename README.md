@@ -62,13 +62,13 @@ CREATE INDEX IF NOT EXISTS NameIndex ON Images (name);
 
 | Method | Path | Description |
 | --- | --- | --- |
-| GET | `/` | Health payload with current timestamp. |
+| GET | `/health` | Health payload with current timestamp. |
 | GET | `/docs` | Swagger UI backed by the generated OpenAPI file (public, CSP relaxed). |
 | GET | `/openapi.json` | Runtime OpenAPI 3.1 document with host patched from the current request. |
 | GET | `/images` | Paginated metadata list (`offset`, `limit`) with total count. |
 | GET | `/images/audit` | Recent upload summaries plus aggregate stats (total images, last updated). |
 | GET | `/images/:name` | Streams a validated image, sets `Content-Type`, `Cache-Control`, `ETag`, `Accept-Ranges`, and `ALT_HEADER_NAME` (alt text). |
-| POST | `/images` | Multipart upload. Validates filename + max size, deduplicates by hash via `getImageByName`, and optionally generates alt text. |
+| POST | `/images` | File upload. Validates filename + max size, deduplicates by hash via `getImageByName`, and optionally generates alt text. |
 | POST | `/images/external` | Accepts `{ fileUrl, name?, description? }`, downloads the remote image, sanitizes metadata, and reuses the shared upload path. |
 | DELETE | `/images/:name` | Removes blob + metadata in one request; returns `200` when both succeed. |
 
