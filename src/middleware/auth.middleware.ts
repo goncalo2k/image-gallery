@@ -41,8 +41,8 @@ export async function authMiddleware(c: AppContext, next: Next): Promise<Respons
 
     const clientId = c.req.header(clientIdHeader);
     const clientSecret = c.req.header(clientSecretHeader);
-    logger.info(`clientId: ${clientId} |  clientSecret: ${clientSecret}`)
     if (!clientId || !clientSecret) {
+        logger.debug(`clientId: ${clientId} |  clientSecret: ${clientSecret}`)
         logger.debug('Failed with unavailable client id or client secret.');
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
