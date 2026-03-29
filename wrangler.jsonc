@@ -14,62 +14,134 @@
     "enabled": true
   },
   "upload_source_maps": true,
-  "routes": [
-    {
-      "pattern": "image-gallery.goncalo2k.pt",
-      "custom_domain": true
-    }
-  ],
-  /**
+  "env": {
+    "production": {
+      "routes": [
+        {
+          "pattern": "image-gallery.goncalo2k.pt",
+          "custom_domain": true
+        },
+        {
+          "pattern": "image-gallery.goncalo2k.com",
+          "custom_domain": true
+        }
+      ],
+      /**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
 	 */
-  // "placement": {  "mode": "smart" }
-  /**
+      // "placement": {  "mode": "smart" }
+      /**
 	 * Bindings
 	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
 	 * databases, object storage, AI inference, real-time communication and more.
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
 	 */
-  "r2_buckets": [
-    {
-      "binding": "ANALOGS_BUCKET",
-      "bucket_name": "analogs",
-      "remote": true
-    }
-  ],
-  /**
+      "r2_buckets": [
+        {
+          "binding": "ANALOGS_BUCKET",
+          "bucket_name": "analogs",
+          "remote": true
+        }
+      ],
+      /**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
-  "vars": {
-    "ALT_HEADER_NAME": "x-image-alt-desc",
-    "CLIENT_ID_HEADER": "CF-Access-Client-Id",
-    "CLIENT_SECRET_HEADER": "CF-Access-Client-Secret",
-    "ALLOWED_ORIGINS": "https://goncalo2k.pt/",
-    "AUTH_ROUTES": "/images/audit",
-    "ENABLE_AUTH": true,
-    "LOG_LEVEL": "debug",
-    "MAX_UPLOAD_SIZE_MB": 20
-  },
-  /**
+      "vars": {
+        "ALT_HEADER_NAME": "x-image-alt-desc",
+        "CLIENT_ID_HEADER": "CF-Access-Client-Id",
+        "CLIENT_SECRET_HEADER": "CF-Access-Client-Secret",
+        "ALLOWED_ORIGINS": "https://goncalo2k.pt/",
+        "AUTH_ROUTES": "/images/audit",
+        "ENABLE_AUTH": true,
+        "LOG_LEVEL": "debug",
+        "MAX_UPLOAD_SIZE_MB": 20
+      },
+      /**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
 	 */
-  "d1_databases": [
-    {
-      "binding": "ANALOGS_METADATA_DB",
-      "database_name": "analogs-db",
-      "database_id": "40e0fd26-7fa9-4e94-8c75-ab1f0cc6669d",
-      "remote": true
+      "d1_databases": [
+        {
+          "binding": "ANALOGS_METADATA_DB",
+          "database_name": "analogs-db",
+          "database_id": "40e0fd26-7fa9-4e94-8c75-ab1f0cc6669d",
+          "remote": true
+        }
+      ],
+      "images": {
+        "binding": "IMAGES",
+      },
+      "ai": {
+        "binding": "AI"
+      }
+    },
+    "staging": {
+      "routes": [
+        {
+          "pattern": "staging.image-gallery.goncalo2k.pt",
+          "custom_domain": true
+        },
+        {
+          "pattern": "staging.image-gallery.goncalo2k.com",
+          "custom_domain": true
+        }
+      ],
+      /**
+	 * Smart Placement
+	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
+	 */
+      // "placement": {  "mode": "smart" }
+      /**
+	 * Bindings
+	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
+	 * databases, object storage, AI inference, real-time communication and more.
+	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+	 */
+      "r2_buckets": [
+        {
+          "binding": "ANALOGS_BUCKET",
+          "bucket_name": "analogs-staging",
+          "remote": true
+        }
+      ],
+      /**
+	 * Environment Variables
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+	 * Note: Use secrets to store sensitive data.
+	 * https://developers.cloudflare.com/workers/configuration/secrets/
+	 */
+      "vars": {
+        "ALT_HEADER_NAME": "x-image-alt-desc",
+        "CLIENT_ID_HEADER": "CF-Access-Client-Id",
+        "CLIENT_SECRET_HEADER": "CF-Access-Client-Secret",
+        "ALLOWED_ORIGINS": "https://staging.goncalo2k.pt/,https://staging.goncalo2k.com/",
+        "AUTH_ROUTES": "/images/audit",
+        "ENABLE_AUTH": true,
+        "LOG_LEVEL": "debug",
+        "MAX_UPLOAD_SIZE_MB": 20
+      },
+      /**
+	 * Service Bindings (communicate between multiple Workers)
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
+	 */
+      "d1_databases": [
+        {
+          "binding": "ANALOGS_METADATA_DB",
+          "database_name": "analogs-staging-db",
+          "database_id": "70ff4d1c-2806-4ff9-9c08-088a920d63cb",
+          "remote": true
+        }
+      ],
+      "images": {
+        "binding": "IMAGES",
+      },
+      "ai": {
+        "binding": "AI"
+      }
     }
-  ],
-  "images": {
-    "binding": "IMAGES",
-  },
-  "ai": {
-    "binding": "AI"
   }
 }
