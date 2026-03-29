@@ -41,12 +41,13 @@ export async function authMiddleware(c: AppContext, next: Next): Promise<Respons
 
     const clientId = c.req.header(clientIdHeader);
     const clientSecret = c.req.header(clientSecretHeader);
-
-    const encoder = new TextEncoder();
+    logger.info(`clientId: ${clientId} |  clientSecret: ${clientSecret}`)
     if (!clientId || !clientSecret) {
         logger.debug('Failed with unavailable client id or client secret.');
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
+    const encoder = new TextEncoder();
+
     const providedClientId = encoder.encode(clientId);
     const storedClientId = encoder.encode(c.env.CLIENT_ID);
     if (providedClientId.byteLength !== storedClientId.byteLength) {
