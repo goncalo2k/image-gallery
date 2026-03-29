@@ -58,7 +58,7 @@ app.get('/health', (c) => {
 })
 
 app.onError((err, c) => {
-  const logger = requestLogger(c)
+  const logger = requestLogger(c);
   logger.error({ err }, 'Unhandled application error')
   return c.json({ errorMessage: 'Internal Server Error' }, 500)
 })

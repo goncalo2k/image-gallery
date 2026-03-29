@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy-staging": "wrangler deploy --minify --env=staging",
-    "deploy-prod": "wrangler deploy --minify --env=production",
+    "deploy-prod": "wrangler deploy --minify --env=''",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "setup-local-db": "npx wrangler d1 execute analogs-db --local --file=./schema.sql",
     "deploy-db-staging": "npx wrangler d1 execute analogs-staging-db --remote --file=./schema.sql",

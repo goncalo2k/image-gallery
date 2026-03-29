@@ -2,6 +2,7 @@
 
 import type { Next } from "hono"
 import type { AppContext } from "../app";
+import { requestLogger } from "../utils/logger";
 import { parseCsv } from "../utils/utils"
 
 export function pathMatches(requestPath: string, protectedPath: string): boolean {
@@ -18,7 +19,7 @@ export function shouldRequireAuth(c: AppContext): boolean {
     if (PUBLIC_PATHS.some((publicPath) => pathMatches(c.req.path, publicPath))) {
         return false;
     }
-    
+
     const protectedEndpoints = parseCsv(c.env.AUTH_ROUTES);
 
     if (protectedEndpoints.length === 0) {
@@ -33,6 +34,8 @@ export async function authMiddleware(c: AppContext, next: Next): Promise<Respons
         return next();
     }
 
+    const logger = requestLogger(c);
+
     const clientIdHeader = c.env.CLIENT_ID_HEADER;
     const clientSecretHeader = c.env.CLIENT_SECRET_HEADER;
 
@@ -41,17 +44,20 @@ export async function authMiddleware(c: AppContext, next: Next): Promise<Respons
 
     const encoder = new TextEncoder();
     if (!clientId || !clientSecret) {
+        logger.debug('Failed with unavailable client id or client secret.');
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
     const providedClientId = encoder.encode(clientId);
     const storedClientId = encoder.encode(c.env.CLIENT_ID);
     if (providedClientId.byteLength !== storedClientId.byteLength) {
+        logger.debug('Failed with different clientId buffer sizes.');
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
 
     const providedClientSecret = encoder.encode(clientSecret);
     const storedClientSecret = encoder.encode(c.env.CLIENT_SECRET);
     if (providedClientSecret.byteLength !== storedClientSecret.byteLength) {
+        logger.debug('Failed with different clientSecret buffer sizes.');
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
 
@@ -60,6 +66,7 @@ export async function authMiddleware(c: AppContext, next: Next): Promise<Respons
         crypto.subtle.timingSafeEqual(providedClientSecret, storedClientSecret)
 
     if (!isAuthorized) {
+        logger.debug('Failed with incorrect clientId or clientSecret.');
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
 

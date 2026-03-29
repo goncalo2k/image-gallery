@@ -26,6 +26,7 @@ if (subtle && typeof subtle.timingSafeEqual !== 'function') {
 const baseEnv = {
   ENABLE_AUTH: true,
   AUTH_ROUTES: '/images',
+  LOG_LEVEL: 'info',
   CLIENT_ID_HEADER: `x-${faker.string.alphanumeric(8).toLowerCase()}`,
   CLIENT_SECRET_HEADER: `x-${faker.string.alphanumeric(8).toLowerCase()}`,
   CLIENT_ID: faker.string.alphanumeric(12),
