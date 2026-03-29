@@ -26,6 +26,12 @@
           "custom_domain": true
         }
       ],
+      "secrets": {
+        "required": [
+          "CLIENT_ID",
+          "CLIENT_SECRET"
+        ],
+      },
       /**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -80,16 +86,13 @@
       }
     },
     "staging": {
-      "routes": [
-        {
-          "pattern": "staging.image-gallery.goncalo2k.pt",
-          "custom_domain": true
-        },
-        {
-          "pattern": "staging.image-gallery.goncalo2k.com",
-          "custom_domain": true
-        }
-      ],
+      "workers_dev": true,
+      "secrets": {
+        "required": [
+          "CLIENT_ID",
+          "CLIENT_SECRET"
+        ],
+      },
       /**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
