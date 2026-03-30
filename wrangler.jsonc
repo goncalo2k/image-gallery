@@ -38,8 +38,7 @@
   ],
   "secrets": {
     "required": [
-      "CLIENT_ID",
-      "CLIENT_SECRET"
+      "POLICY_AUD",
     ],
   },
   /**
@@ -68,13 +67,13 @@
 	 */
   "vars": {
     "ALT_HEADER_NAME": "x-image-alt-desc",
-    "CLIENT_ID_HEADER": "CF-Access-Client-Id",
-    "CLIENT_SECRET_HEADER": "CF-Access-Client-Secret",
+    "TEAM_DOMAIN": "goncalo2k03.cloudflareaccess.com",
     "ALLOWED_ORIGINS": "https://goncalo2k.pt/",
     "AUTH_ROUTES": "/images/audit",
     "ENABLE_AUTH": true,
     "LOG_LEVEL": "debug",
-    "MAX_UPLOAD_SIZE_MB": 20
+    "MAX_UPLOAD_SIZE_MB": 20,
+    "ENVIRONMENT": "PROD"
   },
   /**
 	 * Service Bindings (communicate between multiple Workers)
@@ -109,8 +108,7 @@
       ],
       "secrets": {
         "required": [
-          "CLIENT_ID",
-          "CLIENT_SECRET"
+          "POLICY_UAD"
         ],
       },
       /**
@@ -139,13 +137,13 @@
 	 */
       "vars": {
         "ALT_HEADER_NAME": "x-image-alt-desc",
-        "CLIENT_ID_HEADER": "CF-Access-Client-Id",
-        "CLIENT_SECRET_HEADER": "CF-Access-Client-Secret",
+        "TEAM_DOMAIN": "goncalo2k03.cloudflareaccess.com",
         "ALLOWED_ORIGINS": "https://staging.goncalo2k.pt/,https://staging.goncalo2k.com/",
         "AUTH_ROUTES": "/images/audit",
         "ENABLE_AUTH": true,
         "LOG_LEVEL": "debug",
-        "MAX_UPLOAD_SIZE_MB": 20
+        "MAX_UPLOAD_SIZE_MB": 20,
+        "ENVIRONMENT": "STAGING"
       },
       /**
 	 * Service Bindings (communicate between multiple Workers)

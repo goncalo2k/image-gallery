@@ -9,6 +9,7 @@ import { loggingMiddleware } from './middleware/logger-middleware';
 import { securityHeadersMiddleware } from './middleware/security-headers.middleware';
 import imageRoutes from './routes/image.routes';
 import { requestLogger } from './utils/logger';
+import type { Environmnents } from './utils/utils';
 
 export type AppContext = Context<AppEnv>;
 
@@ -24,10 +25,9 @@ export interface Bindings {
   MAX_UPLOAD_SIZE_MB: number,
   ANALOGS_METADATA_DB: D1Database,
   ALT_HEADER_NAME: string,
-  CLIENT_ID_HEADER: string,
-  CLIENT_SECRET_HEADER: string,
-  CLIENT_ID: string,
-  CLIENT_SECRET: string,
+  POLICY_AUD: string,
+  TEAM_DOMAIN: string,
+  ENVIRONMENT: Environmnents,
   ALLOWED_ORIGINS: string,
   ENABLE_AUTH: boolean,
   AUTH_ROUTES: string,

@@ -2,6 +2,10 @@ import type { AppContext } from "../app";
 
 const IMAGE_NAME_REGEX = /^[a-z0-9 _-]+(\.[a-z]+)?$/i;
 
+export const PUBLIC_PATHS = ['/', '/health', '/docs', '/openapi.json'];
+export const JWT_HEADER = 'cf-access-jwt-assertion';
+export enum Environmnents { Prod = 'PROD', Staging = 'STAGING' };
+
 export const BYTES_PER_MB = 1024 * 1024;
 export const ALLOWED_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml', 'image/avif'] as const;
 export const ALLOWED_IMAGE_MIME_SET = new Set<string>(ALLOWED_IMAGE_MIME_TYPES);

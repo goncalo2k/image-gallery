@@ -1,36 +1,40 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */ 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import { faker } from '@faker-js/faker';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Buffer } from 'node:buffer';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppContext } from '../app';
-import { authMiddleware, pathMatches, shouldRequireAuth } from './auth.middleware';
 
-const globalCrypto = (globalThis as typeof globalThis & { crypto?: Crypto }).crypto;
-const subtle = globalCrypto?.subtle;
-if (subtle && typeof subtle.timingSafeEqual !== 'function') {
-  Object.defineProperty(subtle, 'timingSafeEqual', {
-    value: (a: BufferSource, b: BufferSource) => {
-      const bufferA = Buffer.from(a as ArrayBufferLike);
-      const bufferB = Buffer.from(b as ArrayBufferLike);
-      if (bufferA.byteLength !== bufferB.byteLength) {
-        return false;
-      }
-      return bufferA.equals(bufferB);
-    },
-    configurable: true,
-    writable: true,
-  });
-}
+const {
+  createRemoteJWKSetMock,
+  jwtVerifyMock,
+  requestLoggerMock,
+  loggerDebugMock,
+} = vi.hoisted(() => ({
+  createRemoteJWKSetMock: vi.fn(),
+  jwtVerifyMock: vi.fn(),
+  requestLoggerMock: vi.fn(),
+  loggerDebugMock: vi.fn(),
+}));
+
+vi.mock('jose', () => ({
+  createRemoteJWKSet: createRemoteJWKSetMock,
+  jwtVerify: jwtVerifyMock,
+}));
+
+vi.mock('../utils/logger', () => ({
+  requestLogger: requestLoggerMock,
+}));
+
+import { Environmnents, JWT_HEADER } from '../utils/utils';
+import { authMiddleware, pathMatches, shouldRequireAuth } from './auth.middleware';
 
 const baseEnv = {
   ENABLE_AUTH: true,
   AUTH_ROUTES: '/images',
   LOG_LEVEL: 'info',
-  CLIENT_ID_HEADER: `x-${faker.string.alphanumeric(8).toLowerCase()}`,
-  CLIENT_SECRET_HEADER: `x-${faker.string.alphanumeric(8).toLowerCase()}`,
-  CLIENT_ID: faker.string.alphanumeric(12),
-  CLIENT_SECRET: faker.string.alphanumeric(14),
+  POLICY_AUD: faker.string.alphanumeric(16),
+  TEAM_DOMAIN: 'https://example.cloudflareaccess.com',
+  ENVIRONMENT: Environmnents.Prod,
 };
 
 type HeadersMap = Record<string, string | undefined>;
@@ -86,7 +90,10 @@ describe('auth.middleware helpers', () => {
 
 describe('authMiddleware', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    requestLoggerMock.mockReturnValue({ debug: loggerDebugMock });
+    createRemoteJWKSetMock.mockReturnValue('mock-jwks');
+    jwtVerifyMock.mockResolvedValue({ payload: {} });
   });
 
   it('skips auth when disabled', async () => {
@@ -94,10 +101,23 @@ describe('authMiddleware', () => {
     const { ctx } = createContext({ envOverrides: { ENABLE_AUTH: false } });
 
     await authMiddleware(ctx, next);
-    expect(next).toHaveBeenCalled();
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(jwtVerifyMock).not.toHaveBeenCalled();
   });
 
-  it('returns 401 when headers are missing', async () => {
+  it('returns 401 in prod when access settings are missing', async () => {
+    const next = vi.fn();
+    const { ctx, jsonSpy } = createContext({ envOverrides: { POLICY_AUD: '' } });
+
+    const response = await authMiddleware(ctx, next);
+
+    expect(response).toEqual({ body: { errorMessage: 'Unauthorized' }, status: 401 });
+    expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: 'Unauthorized' }, 401);
+    expect(loggerDebugMock).toHaveBeenCalledWith('Failed with unavailable Policy AUD or Team Domain on PROD.');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when jwt header is missing', async () => {
     const next = vi.fn();
     const { ctx, jsonSpy } = createContext();
 
@@ -105,32 +125,39 @@ describe('authMiddleware', () => {
 
     expect(response).toEqual({ body: { errorMessage: 'Unauthorized' }, status: 401 });
     expect(jsonSpy).toHaveBeenCalledWith({ errorMessage: 'Unauthorized' }, 401);
+    expect(loggerDebugMock).toHaveBeenCalledWith('Failed with unavailable auth token.');
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 401 when credentials are invalid', async () => {
+  it('returns 401 when jwt verification fails', async () => {
     const headers = {
-      [baseEnv.CLIENT_ID_HEADER]: baseEnv.CLIENT_ID,
-      [baseEnv.CLIENT_SECRET_HEADER]: faker.string.alphanumeric(8),
+      [JWT_HEADER]: 'invalid.jwt.token',
     };
+    jwtVerifyMock.mockRejectedValueOnce(new Error('invalid token'));
     const { ctx, jsonSpy } = createContext({ headers });
 
     const response = await authMiddleware(ctx, vi.fn());
 
     expect(response).toEqual({ body: { errorMessage: 'Unauthorized' }, status: 401 });
+    expect(createRemoteJWKSetMock).toHaveBeenCalledWith(new URL('https://example.cloudflareaccess.com/cdn-cgi/access/certs'));
     expect(jsonSpy).toHaveBeenCalledTimes(1);
+    expect(loggerDebugMock).toHaveBeenCalledWith('Failed with invalid token.');
   });
 
-  it('invokes next when credentials are valid', async () => {
+  it('invokes next when jwt is valid', async () => {
     const headers = {
-      [baseEnv.CLIENT_ID_HEADER]: baseEnv.CLIENT_ID,
-      [baseEnv.CLIENT_SECRET_HEADER]: baseEnv.CLIENT_SECRET,
+      [JWT_HEADER]: 'valid.jwt.token',
     };
     const { ctx } = createContext({ headers });
     const next = vi.fn();
 
     await authMiddleware(ctx, next);
 
+    expect(createRemoteJWKSetMock).toHaveBeenCalledWith(new URL('https://example.cloudflareaccess.com/cdn-cgi/access/certs'));
+    expect(jwtVerifyMock).toHaveBeenCalledWith('valid.jwt.token', 'mock-jwks', {
+      issuer: 'https://example.cloudflareaccess.com',
+      audience: baseEnv.POLICY_AUD,
+    });
     expect(next).toHaveBeenCalledTimes(1);
   });
 });
