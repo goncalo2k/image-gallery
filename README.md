@@ -9,7 +9,7 @@ Edge-native image ingestion and metadata API built for Cloudflare Workers. Binar
 - **AI-powered accessibility** – Missing descriptions trigger `@cf/llava-hf/llava-1.5-7b-hf`; oversized buffers are resized via the Images binding before inference to save tokens.
 - **Resilient writes** – Blob upload and description generation happen in parallel, and metadata persistence runs in `executionCtx.waitUntil`. Failures trigger best-effort cleanup.
 - **Edge caching & headers** – Successful `GET /images/:name` responses emit immutable caching headers, an opinionated `ETag`, and store the object in `caches.default` for future hits.
-- **Defense in depth** – Request logging + correlation IDs, configurable CORS, opt-in auth (timing-safe comparisons), and CSP/security headers protect every response.
+- **Defense in depth** – Request logging + correlation IDs, configurable CORS, opt-in Cloudflare Access JWT validation, and CSP/security headers protect every response.
 - **Complete documentation** – OpenAPI 3.1 contract (`src/docs/openapi.ts`) powers `/openapi.json` and `/docs` (Swagger UI) with runtime-aware server URLs.
 - **Tests close to the code** – Vitest specs cover services, controllers, middleware, and utils (`*.spec.ts`).
 
@@ -18,7 +18,7 @@ Edge-native image ingestion and metadata API built for Cloudflare Workers. Binar
 1. **Middleware pipeline** (see `src/middleware/`):
    - `logger-middleware.ts` injects a correlation ID, logs inbound/outbound payloads with duration, and exposes it on the response header.
    - `cors.middleware.ts` builds an allow-list from `ALLOWED_ORIGINS`, custom auth headers, and the request origin.
-   - `auth.middleware.ts` enforces `CLIENT_ID`/`CLIENT_SECRET` on any route listed in `AUTH_ROUTES` (or everything except `/`, `/health`, `/docs`, `/openapi.json` when the list is empty).
+   - `auth.middleware.ts` validates the `cf-access-jwt-assertion` token on any route listed in `AUTH_ROUTES` (or everything except `/`, `/health`, `/docs`, `/openapi.json` when the list is empty).
    - `security-headers.middleware.ts` adds CSP, `nosniff`, and `Referrer-Policy`, relaxing CSP only for `/docs`.
 2. **Routing** – `src/routes/image.routes.ts` wires HTTP verbs to `ImageController` methods. `/images` is the only mounted group.
 3. **Controller** – `ImageController` (a) handles request parsing, (b) emits JSON responses or streamed files, and (c) performs cache writes for successful image fetches.
@@ -117,7 +117,7 @@ Specs mirror their source modules (e.g., `src/services/image.service.spec.ts`, `
 - `controllers/image.controller.ts` handles `caches.default` lookups, request parsing (fetchers via the mapper), response shaping, cache invalidation on deletes, and consistent error serialization via `parseErrorMessage` / `requestLogger`.
 - `services/image.service.ts` is the orchestrator: it paginates D1 queries, de-dupes uploads by name, enforces `MAX_UPLOAD_SIZE_MB`, runs R2 blob writes + AI caption generation (Cloudflare Images downscaling >1 MB buffers) in parallel with `Promise.allSettled`, persists metadata inside `executionCtx.waitUntil`, cleans up orphaned blobs, streams reads from R2 with metadata hydration, and powers audit/statistics plus deletion fan-out.
 - `models/` centralizes types for every payload (`Image`, upload requests, audit logs, `ApiResponse<T>` wrappers), keeping controller/service contracts type-safe.
-- `middleware/` holds each concern with matching specs: `logger-middleware.ts` issues correlation IDs and structured logs, `cors.middleware.ts` builds allow-lists from CSV env vars, `auth.middleware.ts` protects routes with timing-safe header comparisons + optional path scoping, and `security-headers.middleware.ts` emits CSP/Referrer-Policy/Nosniff headers while relaxing CSP just for `/docs`.
+- `middleware/` holds each concern with matching specs: `logger-middleware.ts` issues correlation IDs and structured logs, `cors.middleware.ts` builds allow-lists from CSV env vars, `auth.middleware.ts` protects routes with Cloudflare Access JWT validation + optional path scoping, and `security-headers.middleware.ts` emits CSP/Referrer-Policy/Nosniff headers while relaxing CSP just for `/docs`.
 - `utils/` wraps reusable helpers: `image-mapper.ts` translates between D1 rows/FormData/DTOs, `logger.ts` provides a request-scoped Pino logger with redaction, and `utils.ts` owns CSV parsing, filename validation, pagination math, buffer→stream conversion, and error normalization.
 - `docs/openapi.ts` keeps the OpenAPI 3.1 document collocated with the runtime so Cloudflare Workers can rewrite the `servers` block on every request to mirror the caller’s host/proto while still advertising canonical deployments (production + localhost).
 
@@ -201,8 +201,9 @@ Copy `.dev.vars.example` and fill in the required values. Cloudflare bindings ar
 | Variable | Description |
 | --- | --- |
 | `ALT_HEADER_NAME` | Response header for alt text (default `x-image-alt-desc`). |
-| `CLIENT_ID_HEADER` / `CLIENT_SECRET_HEADER` | Custom header names that carry auth credentials. |
-| `CLIENT_ID` / `CLIENT_SECRET` | Expected credential pair validated with timing-safe comparisons. |
+| `POLICY_AUD` | Cloudflare Access application audience used to validate JWTs. |
+| `TEAM_DOMAIN` | Full Cloudflare Access team URL used as the JWT issuer and JWKS host. |
+| `ENVIRONMENT` | Runtime stage; production rejects requests if Access config is missing. |
 | `ALLOWED_ORIGINS` | CSV allow-list for the CORS middleware (`*` permits all). |
 | `AUTH_ROUTES` | CSV of routes requiring auth; leave empty to protect everything except the built-in public paths. |
 | `ENABLE_AUTH` | Toggle auth globally. |
@@ -222,7 +223,7 @@ Run `pnpm run test` to execute all Vitest suites. Highlights:
 
 - `src/services/image.service.spec.ts` – Validates pagination, AI integration (resizing fallback, buffer passthrough, cleanup), and upload guards.
 - `src/controllers/image.controller.spec.ts` – Covers response codes, caching behavior, and error propagation.
-- `src/middleware/*.spec.ts` – Exercises auth rules, CORS policies, logger behavior, and security headers.
+- `src/middleware/*.spec.ts` – Exercises auth route scoping, Cloudflare Access JWT validation, CORS policies, logger behavior, and security headers.
 - `src/utils/utils.spec.ts` – Ensures CSV parsing and filename checks behave consistently.
 
 Vitest is configured in run mode (`vitest run`), making it suitable for CI and Husky.
