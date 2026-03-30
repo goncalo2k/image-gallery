@@ -1,8 +1,9 @@
-name: Deploy Worker (Prod)
+name: Deploy Worker (Staging)
+
 on:
   push:
     branches:
-      - main
+      - staging
 
 jobs:
   deploy:
@@ -25,3 +26,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env staging
