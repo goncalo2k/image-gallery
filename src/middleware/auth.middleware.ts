@@ -1,16 +1,17 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 
 import type { Next } from "hono"
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { AppContext } from "../app";
 import { requestLogger } from "../utils/logger";
-import { parseCsv } from "../utils/utils"
+import { Environmnents, JWT_HEADER, parseCsv, PUBLIC_PATHS } from "../utils/utils"
 
 export function pathMatches(requestPath: string, protectedPath: string): boolean {
     if (protectedPath === '*') { return true }
     return requestPath === protectedPath || requestPath.startsWith(`${protectedPath}/`)
 }
 
-const PUBLIC_PATHS = ['/', '/health', '/docs', '/openapi.json'];
+
 
 export function shouldRequireAuth(c: AppContext): boolean {
     const authEnabled = c.env.ENABLE_AUTH;
@@ -30,44 +31,39 @@ export function shouldRequireAuth(c: AppContext): boolean {
 }
 
 export async function authMiddleware(c: AppContext, next: Next): Promise<Response | void> {
-    if (!shouldRequireAuth(c)) {
+    if (!shouldRequireAuth(c) || c.env.ENVIRONMENT === Environmnents.Local) {
         return next();
     }
 
     const logger = requestLogger(c);
 
-    const clientIdHeader = c.env.CLIENT_ID_HEADER;
-    const clientSecretHeader = c.env.CLIENT_SECRET_HEADER;
-
-    const clientId = c.req.header(clientIdHeader);
-    const clientSecret = c.req.header(clientSecretHeader);
-    if (!clientId || !clientSecret) {
-        logger.debug(`clientId: ${clientId} |  clientSecret: ${clientSecret}`)
-        logger.debug('Failed with unavailable client id or client secret.');
-        return c.json({ errorMessage: 'Unauthorized' }, 401);
-    }
-    const encoder = new TextEncoder();
-
-    const providedClientId = encoder.encode(clientId);
-    const storedClientId = encoder.encode(c.env.CLIENT_ID);
-    if (providedClientId.byteLength !== storedClientId.byteLength) {
-        logger.debug('Failed with different clientId buffer sizes.');
+    if ((!c.env.POLICY_AUD || !c.env.TEAM_DOMAIN)) {
+        logger.debug('Failed with unavailable Policy AUD or Team Domain on PROD.');
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
 
-    const providedClientSecret = encoder.encode(clientSecret);
-    const storedClientSecret = encoder.encode(c.env.CLIENT_SECRET);
-    if (providedClientSecret.byteLength !== storedClientSecret.byteLength) {
-        logger.debug('Failed with different clientSecret buffer sizes.');
+
+    const jwtToken = c.req.header(JWT_HEADER);
+
+    if (!jwtToken) {
+        logger.debug('Failed with unavailable auth token.');
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
+    try {
+        // Create JWKS from team domain
+        const JWKS = createRemoteJWKSet(
+            new URL(`${c.env.TEAM_DOMAIN}/cdn-cgi/access/certs`),
+        );
 
-    const isAuthorized =
-        crypto.subtle.timingSafeEqual(providedClientId, storedClientId) &&
-        crypto.subtle.timingSafeEqual(providedClientSecret, storedClientSecret)
+        await jwtVerify(jwtToken, JWKS, {
+            issuer: c.env.TEAM_DOMAIN,
+            audience: c.env.POLICY_AUD,
+        });
 
-    if (!isAuthorized) {
-        logger.debug('Failed with incorrect clientId or clientSecret.');
+    } catch (error) {
+        // Token verification failed
+        const message = error instanceof Error ? error.message : "Unknown error";
+        logger.debug(`Failed with invalid token: ${message}`);
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
 

@@ -44,26 +44,18 @@ describe('corsMiddleware', () => {
     capturedConfig = undefined;
   });
 
-  it('configures allowed origins with exact matches and custom headers', async () => {
+  it('configures allowed origins with exact matches', async () => {
     const allowedOrigin = faker.internet.url();
     const disallowedOrigin = faker.internet.url();
-    const clientIdHeader = `x-${faker.string.alphanumeric(6)}`;
-    const clientSecretHeader = `x-${faker.string.alphanumeric(6)}`;
     const ctx = createContext({
       ALLOWED_ORIGINS: `${allowedOrigin}, ${faker.internet.url()}`,
-      CLIENT_ID_HEADER: clientIdHeader,
-      CLIENT_SECRET_HEADER: clientSecretHeader,
     });
     const next = vi.fn();
 
     await corsMiddleware(ctx, next);
 
     expect(capturedConfig).toBeTruthy();
-    expect(capturedConfig?.allowHeaders).toEqual([
-      'Content-Type',
-      clientIdHeader,
-      clientSecretHeader,
-    ]);
+    expect(capturedConfig?.allowHeaders).toEqual(['Content-Type']);
     expect(capturedConfig?.allowMethods).toEqual(['GET', 'POST', 'DELETE']);
 
     expect(typeof capturedConfig?.origin).toBe('function');
