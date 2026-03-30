@@ -18,6 +18,7 @@
     "batch-upload": "node scripts/batch-upload.mjs",
     "clear-images": "node scripts/clear-all-images.mjs"
   },
+  "packageManager": "pnpm@10.8.0",
   "dependencies": {
     "@hono/eslint-config": "^2.1.0",
     "@hono/swagger-ui": "^0.6.1",
