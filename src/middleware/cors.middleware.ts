@@ -27,8 +27,6 @@ export async function corsMiddleware(c: AppContext, next: Next): Promise<Respons
         },
         allowHeaders: [
             'Content-Type',
-            c.env.CLIENT_ID_HEADER,
-            c.env.CLIENT_SECRET_HEADER
         ].filter(Boolean),
         allowMethods: ['GET', 'POST', 'DELETE'],
         credentials: false

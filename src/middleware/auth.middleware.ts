@@ -31,13 +31,13 @@ export function shouldRequireAuth(c: AppContext): boolean {
 }
 
 export async function authMiddleware(c: AppContext, next: Next): Promise<Response | void> {
-    if (!shouldRequireAuth(c)) {
+    if (!shouldRequireAuth(c) || c.env.ENVIRONMENT === Environmnents.Local) {
         return next();
     }
 
     const logger = requestLogger(c);
 
-    if ((!c.env.POLICY_AUD || !c.env.TEAM_DOMAIN) && c.env.ENVIRONMENT === Environmnents.Prod) {
+    if ((!c.env.POLICY_AUD || !c.env.TEAM_DOMAIN)) {
         logger.debug('Failed with unavailable Policy AUD or Team Domain on PROD.');
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
@@ -63,7 +63,7 @@ export async function authMiddleware(c: AppContext, next: Next): Promise<Respons
     } catch (error) {
         // Token verification failed
         const message = error instanceof Error ? error.message : "Unknown error";
-        logger.debug('Failed with invalid token.');
+        logger.debug(`Failed with invalid token.: ${message}`);
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
 

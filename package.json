@@ -2,10 +2,10 @@
   "name": "image-gallery",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --env=staging",
     "deploy-staging": "wrangler deploy --minify --env=staging",
-    "deploy-prod": "wrangler deploy --minify --env=''",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "deploy-prod": "wrangler deploy --minify --env=prod",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings --env=staging",
     "setup-local-db": "npx wrangler d1 execute analogs-db --local --file=./schema.sql",
     "deploy-db-staging": "npx wrangler d1 execute analogs-staging-db --remote --file=./schema.sql",
     "deploy-db-prod": "npx wrangler d1 execute analogs-db --remote --file=./schema.sql",
