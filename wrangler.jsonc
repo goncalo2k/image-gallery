@@ -93,4 +93,75 @@
   "ai": {
     "binding": "AI"
   },
+  "env": {
+    "staging": {
+      "routes": [
+        {
+          "pattern": "staging.image-gallery.goncalo2k.pt",
+          "custom_domain": true
+        },
+        {
+          "pattern": "staging.image-gallery.goncalo2k.com",
+          "custom_domain": true
+        }
+      ],
+      "secrets": {
+        "required": [
+          "POLICY_AUD",
+        ],
+      },
+      /**
+	 * Smart Placement
+	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
+	 */
+      // "placement": {  "mode": "smart" }
+      /**
+	 * Bindings
+	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
+	 * databases, object storage, AI inference, real-time communication and more.
+	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+	 */
+      "r2_buckets": [
+        {
+          "binding": "ANALOGS_BUCKET",
+          "bucket_name": "analogs-staging",
+          "remote": true
+        }
+      ],
+      /**
+	 * Environment Variables
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+	 * Note: Use secrets to store sensitive data.
+	 * https://developers.cloudflare.com/workers/configuration/secrets/
+	 */
+      "vars": {
+        "ALT_HEADER_NAME": "x-image-alt-desc",
+        "TEAM_DOMAIN": "https://goncalo2k03.cloudflareaccess.com",
+        "ALLOWED_ORIGINS": "https://staging.goncalo2k.pt/",
+        "AUTH_ROUTES": "/images/audit",
+        "ENABLE_AUTH": true,
+        "LOG_LEVEL": "debug",
+        "MAX_UPLOAD_SIZE_MB": 20,
+        "ENVIRONMENT": "STAGING"
+      },
+      /**
+	 * Service Bindings (communicate between multiple Workers)
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
+	 */
+      "d1_databases": [
+        {
+          "binding": "ANALOGS_METADATA_DB",
+          "database_name": "analogs-staging-db",
+          "database_id": "70ff4d1c-2806-4ff9-9c08-088a920d63cb",
+          "remote": true
+        }
+      ],
+      "images": {
+        "binding": "IMAGES",
+      },
+      "ai": {
+        "binding": "AI"
+      },
+    }
+  }
 }
