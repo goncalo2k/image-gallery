@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": "src/app.ts",
-  "name": "image-gallery",
+  "name": "image-gallery-staging",
   "compatibility_date": "2026-03-10",
   /**
  * For more details on how to configure Wrangler, refer to:
