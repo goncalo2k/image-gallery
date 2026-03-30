@@ -238,6 +238,7 @@ export class ImageService {
         const description = descriptionResult?.description as string;
         const id = descriptionResult?.id as string;
         const contentType = descriptionResult?.content_type as string;
+        
         if (!description || !createdAt || !id || !contentType) {
             return undefined;
         }
