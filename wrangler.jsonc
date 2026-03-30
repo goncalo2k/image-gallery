@@ -1,6 +1,5 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "image-gallery",
   "main": "src/app.ts",
   "compatibility_date": "2026-03-10",
   /**
@@ -28,6 +27,7 @@
   "upload_source_maps": true,
   "env": {
     "staging": {
+      "name": "image-gallery-staging",
       "workers_dev": true,
       "routes": [
         {
@@ -98,6 +98,7 @@
       }
     },
     "prod": {
+      "name": "image-gallery",
       "routes": [
         {
           "pattern": "image-gallery.goncalo2k.pt",
