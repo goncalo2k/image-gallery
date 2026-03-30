@@ -141,7 +141,7 @@ describe('authMiddleware', () => {
     expect(response).toEqual({ body: { errorMessage: 'Unauthorized' }, status: 401 });
     expect(createRemoteJWKSetMock).toHaveBeenCalledWith(new URL('https://example.cloudflareaccess.com/cdn-cgi/access/certs'));
     expect(jsonSpy).toHaveBeenCalledTimes(1);
-    expect(loggerDebugMock).toHaveBeenCalledWith('Failed with invalid token.: invalid token');
+    expect(loggerDebugMock).toHaveBeenCalledWith('Failed with invalid token: invalid token');
   });
 
   it('invokes next when jwt is valid', async () => {

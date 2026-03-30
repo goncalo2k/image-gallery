@@ -70,7 +70,7 @@
 	 */
       "vars": {
         "ALT_HEADER_NAME": "x-image-alt-desc",
-        "TEAM_DOMAIN": "goncalo2k03.cloudflareaccess.com",
+        "TEAM_DOMAIN": "https://goncalo2k03.cloudflareaccess.com",
         "ALLOWED_ORIGINS": "https://staging.goncalo2k.pt/,https://staging.goncalo2k.com/",
         "AUTH_ROUTES": "/images/audit",
         "ENABLE_AUTH": true,
@@ -139,7 +139,7 @@
 	 */
       "vars": {
         "ALT_HEADER_NAME": "x-image-alt-desc",
-        "TEAM_DOMAIN": "goncalo2k03.cloudflareaccess.com",
+        "TEAM_DOMAIN": "https://goncalo2k03.cloudflareaccess.com",
         "ALLOWED_ORIGINS": "https://goncalo2k.pt/",
         "AUTH_ROUTES": "/images/audit",
         "ENABLE_AUTH": true,

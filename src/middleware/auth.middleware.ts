@@ -50,7 +50,7 @@ export async function authMiddleware(c: AppContext, next: Next): Promise<Respons
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
     try {
-        // Create JWKS from your team domain
+        // Create JWKS from team domain
         const JWKS = createRemoteJWKSet(
             new URL(`${c.env.TEAM_DOMAIN}/cdn-cgi/access/certs`),
         );
@@ -63,7 +63,7 @@ export async function authMiddleware(c: AppContext, next: Next): Promise<Respons
     } catch (error) {
         // Token verification failed
         const message = error instanceof Error ? error.message : "Unknown error";
-        logger.debug(`Failed with invalid token.: ${message}`);
+        logger.debug(`Failed with invalid token: ${message}`);
         return c.json({ errorMessage: 'Unauthorized' }, 401);
     }
 
